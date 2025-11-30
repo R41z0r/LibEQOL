@@ -1,0 +1,4 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+	<Script file="LibEQOLEditMode.lua" />
+	<Script file="LibEQOL.lua" />
+</Ui>

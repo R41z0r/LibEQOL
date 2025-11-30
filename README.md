@@ -1,0 +1,107 @@
+# LibEQOL
+
+Quality-of-life toolkit for WoW addons. Today it ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (selection overlays, dialogs, widgets); additional modes like Settings Mode will be added under the same `LibEQOL` umbrella. `LibEQOL-1.0` remains a backward-compatible alias to the Edit Mode sublib for existing users.
+
+Full docs (per widget/API): see `docs/index.md`.
+
+## Requirements
+- Retail WoW 10.0+ (uses Edit Mode APIs)
+- LibStub (bundled by most addon frameworks)
+
+## Install / embed
+- **Standalone:** Drop `LibEQOL` into `Interface/AddOns` and enable it; it loads automatically.
+- **Embedded:** Place the folder in `libs/` and include `LibEQOL.xml` in your TOC:
+  ```
+  <Include file="libs/LibEQOL/LibEQOL.xml" />
+  ```
+
+## Architecture
+- Single-file design with explicit layers: state tracker, pool manager, widget builders, dialog controller, and selection handling.
+- Modules under `LibEQOL`: **LibEQOLEditMode** (shipping) and **LibEQOLSettingsMode** (planned) share the core helpers while exposing separate APIs.
+- Umbrella entry (`LibEQOL.lua`) surfaces sublibs on `_G.LibEQOL` (`EditMode` is loaded by default; future modules attach alongside).
+- All widgets are built on-demand from our factories; no embedded Blizzard UI copies or borrowed layout code.
+- Public API for Edit Mode (`AddFrame`, `AddFrameSettings`, `AddFrameSettingsButton`, callbacks, `SettingType`, etc.) stays stable for drop-in compatibility.
+
+## Getting started (TL;DR)
+```lua
+local EditMode = LibStub("LibEQOLEditMode-1.0")
+
+-- 1) Make your frame moveable via Edit Mode
+EditMode:AddFrame(MyFrame, function(frame, layoutName, point, x, y)
+    frame:ClearAllPoints()
+    frame:SetPoint(point, UIParent, point, x, y)
+end, { point = "CENTER", x = 0, y = 0 })
+
+-- 2) Optional: add settings rows under the Edit Mode dialog
+EditMode:AddFrameSettings(MyFrame, {
+    {
+        name = "Show title",
+        kind = EditMode.SettingType.Checkbox,
+        default = true,
+        get = function(layout) return MyDB[layout].showTitle end,
+        set = function(layout, value) MyDB[layout].showTitle = value end,
+    },
+    {
+        name = "Size",
+        kind = EditMode.SettingType.Slider,
+        minValue = 0.5,
+        maxValue = 2,
+        valueStep = 0.05,
+        default = 1,
+        get = function(layout) return MyDB[layout].scale end,
+        set = function(layout, value) MyDB[layout].scale = value end,
+        formatter = function(value) return string.format("%.2fx", value) end,
+    },
+})
+
+-- 3) Optional: custom button under the settings list
+EditMode:AddFrameSettingsButton(MyFrame, {
+    text = "Open full config",
+    click = function() OpenOptionsFrameToCategory("MyAddon") end,
+})
+
+-- 4) Optional: react to Edit Mode events
+EditMode:RegisterCallback("layout", function(layoutName)
+    print("Now editing layout:", layoutName)
+end)
+```
+
+## Feature highlights
+- Selection overlay and move handles that integrate with Blizzard Edit Mode selection/highlight.
+- Keyboard nudging (arrow keys, Shift for larger steps) and reset-to-default positioning.
+- Auto-built settings dialog with pooled widgets (checkbox, dropdown, multi dropdown, slider, color picker, checkbox+color, dropdown+color) and a built-in reset action.
+- Per-frame action buttons plus automatic "Reset Position" button (can be hidden).
+- Callbacks for entering/exiting Edit Mode and when the active layout changes.
+- Helpers to refresh setting enable states when your backing data changes.
+
+## API quick reference
+- `AddFrame(frame, callback, defaultPosition)` – register a frame for Edit Mode. `callback(frame, layoutName, point, x, y)` fires on move/reset; positions are relative to `UIParent` and `relativePoint` is the same as `point`. `defaultPosition` defaults to `{ point = "CENTER", x = 0, y = 0 }` but can also include `relativePoint` (currently treated the same as `point`).
+- Reset button: sets settings back to their `default` (and `colorDefault` where applicable); settings without defaults are skipped.
+- `AddFrameSettings(frame, settingsTable)` – supply rows for the settings dialog. See **Setting rows**.
+- `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler); set `data.useStretch = true` or `data.template = "UIMenuButtonStretchTemplate"` for a stretch-style button.
+- `SetFrameResetVisible(frame, showReset)` – hide or re-show the built-in "Reset Position" button.
+- `RegisterCallback(event, callback)` – `event` is `"enter"`, `"exit"`, `"layout"`, `"layoutadded"`, or `"layoutdeleted"`; `layout` callbacks receive `(layoutName, layoutIndex)`.
+- `GetActiveLayoutName()` / `GetActiveLayoutIndex()` / `IsInEditMode()` – query current state.
+- `GetFrameDefaultPosition(frame)` – retrieve the default position for a registered frame.
+- `lib.internal:RefreshSettings()` – re-evaluate `isEnabled`/`disabled` predicates on visible rows.
+
+## Setting rows (schema + examples)
+Each row needs `name`, `kind`, `get(layoutName)`, `set(layoutName, value)`, and `default`. Optional `isEnabled(layoutName)` or `disabled(layoutName)` toggle availability.
+
+Kinds (from `EditMode.SettingType`):
+- `Checkbox` – boolean toggle.
+- `Dropdown` – either `values = { { text = "Option", isRadio = true? }, ... }` or a `generator(owner, rootDescription, data)` for dynamic menus. Optional `height` to force scrolling.
+- `MultiDropdown` – checkbox menu that returns a map of selected values; supports `values`/`options`, optional `optionfunc(layout)`, `isSelected`, and `setSelected`.
+- `Slider` – `minValue`, `maxValue`, optional `valueStep`, `formatter`, `allowInput` (show text box).
+- `Color` – values resolve to `{ r, g, b, a? }`; set `hasOpacity` to allow alpha.
+- `CheckboxColor` – boolean + color. Use `colorGet(layout)` and `colorSet(layout, color)` (or `setColor`) plus `colorDefault`.
+- `DropdownColor` – dropdown behavior plus a color swatch via `colorGet`/`colorSet`.
+- `tooltip = "..."` can be added to any row to show a GameTooltip on hover.
+
+## Distribution tips
+ - Keep `LibStub` loading before `LibEQOL.lua` when embedding.
+ - If you rely on load-on-demand, list `LibEQOL` in `OptionalDeps` so the library is ready before your code runs.
+
+## Troubleshooting
+- If a frame does not move, ensure it is parented and not forbidden during combat; Edit Mode is blocked in combat.
+- Call `lib.internal:RefreshSettings()` after you mutate data that controls `isEnabled`/`disabled` logic for visible rows.

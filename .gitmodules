@@ -1,0 +1,4 @@
+[submodule "docs/wiki"]
+	path = docs/wiki
+	url = https://github.com/R41z0r/LibEditModeImproved.wiki.git
+	branch = master

@@ -1,0 +1,15 @@
+package-as: LibEQOL
+
+enable-nolib-creation: no
+
+externals:
+  libs/LibStub:
+    url: https://repos.curseforge.com/wow/libstub/trunk
+    tag: latest
+
+ignore:
+  - .git
+  - .github
+  - docs
+  - .gitmodules
+  - .vscode
