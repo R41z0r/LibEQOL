@@ -75,15 +75,18 @@ end)
 - Helpers to refresh setting enable states when your backing data changes.
 
 ## API quick reference
-- `AddFrame(frame, callback, defaultPosition)` – register a frame for Edit Mode. `callback(frame, layoutName, point, x, y)` fires on move/reset; anchors stay relative to the frame’s current parent (or existing relative frame when nudging) and `defaultPosition` defaults to `{ point = "CENTER", x = 0, y = 0 }` relative to the parent.
+- `AddFrame(frame, callback, defaultPosition)` – register a frame for Edit Mode. `callback(frame, layoutName, point, x, y)` fires on move/reset; anchors stay relative to the frame’s current parent (or existing relative frame when nudging) and `defaultPosition` defaults to `{ point = "CENTER", x = 0, y = 0 }` relative to the parent. Opt-in overlay/label toggle via `defaultPosition.enableOverlayToggle = true` (or `overlayToggleEnabled = true`).
 - Reset button: sets settings back to their `default` (and `colorDefault` where applicable); settings without defaults are skipped.
 - `AddFrameSettings(frame, settingsTable)` – supply rows for the settings dialog. See **Setting rows**.
 - `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler) using the built-in Edit Mode extra button style.
 - `SetFrameResetVisible(frame, showReset)` – hide or re-show the built-in "Reset Position" button.
+- `SetFrameOverlayToggleEnabled(frame, enabled)` – show/hide the eye-button for that frame; default is disabled until you opt-in.
 - `RegisterCallback(event, callback)` – `event` is `"enter"`, `"exit"`, `"layout"`, `"layoutadded"`, `"layoutdeleted"`, `"layoutrenamed"`, `"layoutduplicate"`, or `"spec"`; `layout` callbacks receive `(layoutName, layoutIndex)`; `spec` receives the current spec index (from `GetSpecialization()`).
 - `GetActiveLayoutName()` / `GetActiveLayoutIndex()` / `IsInEditMode()` – query current state.
 - `GetFrameDefaultPosition(frame)` – retrieve the default position for a registered frame.
 - `lib.internal:RefreshSettings()` – re-evaluate `isEnabled`/`disabled` predicates on visible rows.
+
+Example: `examples/EditModeExamples.lua` includes an "Overlay Toggle" frame showing how to opt into the eye-button via `enableOverlayToggle = true`. GIF: https://raw.githubusercontent.com/wiki/R41z0r/LibEQOLWiki/assets/widgets/frames/example-hideoverlay.gif
 
 ## Setting rows (schema + examples)
 Each row needs `name`, `kind`, `get(layoutName)`, `set(layoutName, value)`, and `default`. Optional `isEnabled(layoutName)` or `disabled(layoutName)` toggle availability.

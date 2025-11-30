@@ -42,6 +42,7 @@ local State = {
 	resetToggles = lib.resetToggles or {},
 	collapseFlags = lib.collapseFlags or {},
 	widgetPools = lib.widgetPools or {},
+	overlayToggleFlags = lib.overlayToggleFlags or {},
 	layoutSnapshot = Internal.layoutNameSnapshot,
 }
 
@@ -53,6 +54,7 @@ lib.buttonSpecs = State.buttonSpecs
 lib.resetToggles = State.resetToggles
 lib.collapseFlags = State.collapseFlags
 lib.widgetPools = State.widgetPools
+lib.overlayToggleFlags = State.overlayToggleFlags
 
 -- frequently used globals ----------------------------------------------------------
 local CreateFrame = _G.CreateFrame
@@ -1723,8 +1725,17 @@ end
 function Dialog:Update(selection)
 	self.selection = selection
 	self.Title:SetText(selection.parent.editModeName or selection.parent:GetName())
-	updateSelectionVisuals(selection, selection.overlayHidden)
-	updateEyeButton(self.HideLabelButton, selection.overlayHidden)
+	local allowOverlayToggle = State.overlayToggleFlags[selection.parent] == true
+	if self.HideLabelButton then
+		if allowOverlayToggle then
+			self.HideLabelButton:Show()
+			updateSelectionVisuals(selection, selection.overlayHidden)
+			updateEyeButton(self.HideLabelButton, selection.overlayHidden)
+		else
+			self.HideLabelButton:Hide()
+			updateSelectionVisuals(selection, false)
+		end
+	end
 	self:UpdateSettings()
 	self:UpdateButtons()
 	if not self:IsShown() then
@@ -1945,6 +1956,9 @@ function Internal:CreateDialog()
 	hideLabelButton:SetScript("OnClick", function()
 		local selection = dialog.selection
 		if not selection then
+			return
+		end
+		if State.overlayToggleFlags[selection.parent] == false then
 			return
 		end
 		local hidden = not selection.overlayHidden
@@ -2218,6 +2232,15 @@ function lib:AddFrame(frame, callback, default)
 	State.selectionRegistry[frame] = selection
 	State.frameHandlers[frame] = callback
 	State.defaultPositions[frame] = default
+	if default then
+		local toggle = default.enableOverlayToggle
+			or default.overlayToggleEnabled
+			or (default.enableOverlayToggle == false and false)
+			or (default.overlayToggleEnabled == false and false)
+		if toggle ~= nil then
+			State.overlayToggleFlags[frame] = not not toggle
+		end
+	end
 
 	if not Internal.dialog then
 		Internal.dialog = Internal:CreateDialog()
@@ -2290,6 +2313,13 @@ end
 
 function lib:SetFrameResetVisible(frame, showReset)
 	State.resetToggles[frame] = not not showReset
+end
+
+function lib:SetFrameOverlayToggleEnabled(frame, enabled)
+	State.overlayToggleFlags[frame] = not not enabled
+	if enabled == false and State.selectionRegistry[frame] then
+		State.selectionRegistry[frame].overlayHidden = false
+	end
 end
 
 function lib:RegisterCallback(event, callback)

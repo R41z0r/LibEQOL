@@ -194,10 +194,24 @@ local examples = {
 				field = "checkboxColorEnabled",
 				default = true,
 				colorField = "checkboxColor",
-				colorDefault = { 1, 0.8, 0.2, 1 },
-				hasOpacity = true,
+			colorDefault = { 1, 0.8, 0.2, 1 },
+			hasOpacity = true,
+		},
+	},
+	{
+		key = "OverlayToggle",
+		title = "Overlay Toggle",
+		color = { 0.4, 0.7, 0.9 },
+		defaults = { point = "CENTER", x = -80, y = -80, enableOverlayToggle = true },
+		settings = {
+			{
+				name = "Example toggle",
+				kind = EditMode.SettingType.Checkbox,
+				field = "demoToggle",
+				default = true,
 			},
 		},
+	},
 	},
 	{
 		key = "DropdownColor",
@@ -246,6 +260,8 @@ local function registerExample(example)
 		point = example.defaults.point,
 		x = example.defaults.x,
 		y = example.defaults.y,
+		enableOverlayToggle = example.defaults.enableOverlayToggle,
+		overlayToggleEnabled = example.defaults.overlayToggleEnabled,
 	})
 
 	-- settings rows
