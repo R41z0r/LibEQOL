@@ -825,13 +825,13 @@ local function buildMultiDropdown()
 		Mixin(frame, mixin)
 
 		local label = frame:CreateFontString(nil, nil, "GameFontHighlightMedium")
-		label:SetPoint("TOPLEFT")
+		label:SetPoint("LEFT")
 		label:SetWidth(100)
 		label:SetJustifyH("LEFT")
 		frame.Label = label
 
 		local dropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
-		dropdown:SetPoint("TOPLEFT", label, "TOPRIGHT", 5, 0)
+		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
 
