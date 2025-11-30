@@ -2,6 +2,8 @@
 
 Lightweight Edit Mode helper sublib `LibEQOLEditMode-1.0` for Blizzard Edit Mode. Provides selection overlays, ready-made setting widgets (checkbox/dropdown/multi-dropdown/slider/color, incl. checkbox+color and dropdown+color), keyboard nudging, reset-to-default, and callbacks for enter/exit/layout. `LibEQOL-1.0` stays as an alias for existing users.
 
+Docs: https://github.com/R41z0r/LibEQOLWiki/wiki
+
 ## Install / embed
 - Standalone: drop `LibEQOL` into `Interface/AddOns` and enable it (loads automatically).
 - Embedded: include `LibEQOL.xml` from your `libs/` folder:

@@ -2,7 +2,7 @@
 
 Quality-of-life toolkit for WoW addons. Today it ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (selection overlays, dialogs, widgets); additional modes like Settings Mode will be added under the same `LibEQOL` umbrella. `LibEQOL-1.0` remains a backward-compatible alias to the Edit Mode sublib for existing users.
 
-Full docs (per widget/API): see `docs/index.md`.
+Full docs live at: https://github.com/R41z0r/LibEQOLWiki/wiki
 
 ## Requirements
 - Retail WoW 10.0+ (uses Edit Mode APIs)
