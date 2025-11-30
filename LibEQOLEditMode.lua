@@ -298,8 +298,85 @@ local function evaluateVisibility(data)
 	return true
 end
 
+local function updateLabelVisibility(selection, hidden)
+	if not selection then
+		return
+	end
+	selection.labelHidden = not not hidden
+	if selection.Label then
+		selection.Label:SetAlpha(hidden and 0 or 1)
+	end
+	if selection.Text then
+		selection.Text:SetAlpha(hidden and 0 or 1)
+	end
+end
+
+local function updateOverlayVisibility(selection, hidden)
+	if not selection then
+		return
+	end
+	selection.overlayHidden = not not hidden
+	selection.overlayAlphas = selection.overlayAlphas or {}
+	for _, region in ipairs({ selection:GetRegions() }) do
+		if region.GetObjectType and region:GetObjectType() == "Texture" then
+			if hidden then
+				if selection.overlayAlphas[region] == nil then
+					selection.overlayAlphas[region] = region:GetAlpha() or 1
+				end
+				region:SetAlpha(0)
+			else
+				local alpha = selection.overlayAlphas[region]
+				region:SetAlpha(alpha ~= nil and alpha or 1)
+			end
+		end
+	end
+end
+
+local function updateSelectionVisuals(selection, hidden)
+	if hidden == nil and selection then
+		hidden = selection.overlayHidden
+	end
+	updateLabelVisibility(selection, hidden)
+	updateOverlayVisibility(selection, hidden)
+end
+
 -- Layout helpers ------------------------------------------------------------------
 local Layout = {}
+local LFG_EYE_TEXTURE = [[Interface\LFGFrame\LFG-Eye]]
+local LFG_EYE_FRAME_OPEN = 0
+local LFG_EYE_FRAME_CLOSED = 4
+local LFG_EYE_FRAME_WIDTH = 64
+local LFG_EYE_FRAME_HEIGHT = 64
+local LFG_EYE_TEXTURE_WIDTH = 512
+local LFG_EYE_TEXTURE_HEIGHT = 256
+
+local function setEyeFrame(tex, frameIndex)
+	if not tex or not frameIndex then
+		return
+	end
+	local cols = LFG_EYE_TEXTURE_WIDTH / LFG_EYE_FRAME_WIDTH
+	local col = frameIndex % cols
+	local row = math.floor(frameIndex / cols)
+
+	local left = (col * LFG_EYE_FRAME_WIDTH) / LFG_EYE_TEXTURE_WIDTH
+	local right = ((col + 1) * LFG_EYE_FRAME_WIDTH) / LFG_EYE_TEXTURE_WIDTH
+	local top = (row * LFG_EYE_FRAME_HEIGHT) / LFG_EYE_TEXTURE_HEIGHT
+	local bottom = ((row + 1) * LFG_EYE_FRAME_HEIGHT) / LFG_EYE_TEXTURE_HEIGHT
+
+	tex:SetTexCoord(left, right, top, bottom)
+end
+
+local function updateEyeButton(eyeButton, hidden)
+	if not eyeButton then
+		return
+	end
+	local tex = eyeButton:GetNormalTexture()
+	if tex then
+		tex:SetTexture(LFG_EYE_TEXTURE)
+		setEyeFrame(tex, hidden and LFG_EYE_FRAME_CLOSED or LFG_EYE_FRAME_OPEN)
+		tex:SetDesaturated(false)
+	end
+end
 
 local function snapshotLayoutNames(layoutInfo)
 	if not (layoutInfo and layoutInfo.layouts) then
@@ -1646,6 +1723,8 @@ end
 function Dialog:Update(selection)
 	self.selection = selection
 	self.Title:SetText(selection.parent.editModeName or selection.parent:GetName())
+	updateSelectionVisuals(selection, selection.overlayHidden)
+	updateEyeButton(self.HideLabelButton, selection.overlayHidden)
 	self:UpdateSettings()
 	self:UpdateButtons()
 	if not self:IsShown() then
@@ -1853,6 +1932,38 @@ function Internal:CreateDialog()
 	dialogClose.ignoreInLayout = true
 	dialog.Close = dialogClose
 
+	local hideLabelButton = CreateFrame("Button", nil, dialog)
+	hideLabelButton:SetSize(32, 32)
+	hideLabelButton:SetPoint("RIGHT", dialogClose, "LEFT", -4, 0)
+	hideLabelButton:SetNormalTexture(LFG_EYE_TEXTURE)
+	local dialogEyeTex = hideLabelButton:GetNormalTexture()
+	if dialogEyeTex then
+		setEyeFrame(dialogEyeTex, LFG_EYE_FRAME_OPEN)
+	end
+	hideLabelButton:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]])
+	hideLabelButton:GetHighlightTexture():SetBlendMode("ADD")
+	hideLabelButton:SetScript("OnClick", function()
+		local selection = dialog.selection
+		if not selection then
+			return
+		end
+		local hidden = not selection.overlayHidden
+		updateSelectionVisuals(selection, hidden)
+		updateEyeButton(hideLabelButton, hidden)
+		dialog:Layout()
+	end)
+	hideLabelButton:SetScript("OnEnter", function()
+		if not GameTooltip then
+			return
+		end
+		GameTooltip:SetOwner(hideLabelButton, "ANCHOR_RIGHT")
+		local state = dialog.selection and dialog.selection.overlayHidden and HUD_EDIT_MODE_SHOW or HUD_EDIT_MODE_HIDE
+		GameTooltip:SetText((state or "Toggle") .. " highlight")
+		GameTooltip:Show()
+	end)
+	hideLabelButton:SetScript("OnLeave", GameTooltip_Hide)
+	dialog.HideLabelButton = hideLabelButton
+
 	local dialogSettings = CreateFrame("Frame", nil, dialog, "VerticalLayoutFrame")
 	dialogSettings:SetPoint("TOP", dialogTitle, "BOTTOM", 0, -12)
 	dialogSettings.spacing = 2
@@ -1956,12 +2067,20 @@ local function resetSelectionIndicators()
 		if selection.isSelected then
 			frame:SetMovable(false)
 		end
+		local keepHidden = selection.overlayHidden
+		if not lib.isEditing then
+			keepHidden = false
+		end
+		updateSelectionVisuals(selection, keepHidden)
 		if not lib.isEditing then
 			selection:Hide()
 			selection.isSelected = false
 		else
 			selection:ShowHighlighted()
 		end
+	end
+	if Internal.dialog and Internal.dialog.HideLabelButton then
+		updateEyeButton(Internal.dialog.HideLabelButton, false)
 	end
 end
 
@@ -2081,10 +2200,16 @@ function lib:AddFrame(frame, callback, default)
 	end
 	selection:Hide()
 
+	selection.labelHidden = false
+	selection.overlayHidden = false
 	if select(4, GetBuildInfo()) >= 110200 then
+		selection.systemBaseName = frame.editModeName or frame:GetName()
 		selection.system = {}
 		selection.system.GetSystemName = function()
-			return frame.editModeName or frame:GetName()
+			if selection.labelHidden then
+				return ""
+			end
+			return selection.systemBaseName
 		end
 	else
 		selection.Label:SetText(frame.editModeName or frame:GetName())
