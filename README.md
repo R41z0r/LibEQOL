@@ -75,12 +75,12 @@ end)
 - Helpers to refresh setting enable states when your backing data changes.
 
 ## API quick reference
-- `AddFrame(frame, callback, defaultPosition)` – register a frame for Edit Mode. `callback(frame, layoutName, point, x, y)` fires on move/reset; positions are relative to `UIParent` and `relativePoint` is the same as `point`. `defaultPosition` defaults to `{ point = "CENTER", x = 0, y = 0 }` but can also include `relativePoint` (currently treated the same as `point`).
+- `AddFrame(frame, callback, defaultPosition)` – register a frame for Edit Mode. `callback(frame, layoutName, point, x, y)` fires on move/reset; anchors stay relative to the frame’s current parent (or existing relative frame when nudging) and `defaultPosition` defaults to `{ point = "CENTER", x = 0, y = 0 }` relative to the parent.
 - Reset button: sets settings back to their `default` (and `colorDefault` where applicable); settings without defaults are skipped.
 - `AddFrameSettings(frame, settingsTable)` – supply rows for the settings dialog. See **Setting rows**.
-- `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler); set `data.useStretch = true` or `data.template = "UIMenuButtonStretchTemplate"` for a stretch-style button.
+- `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler) using the built-in Edit Mode extra button style.
 - `SetFrameResetVisible(frame, showReset)` – hide or re-show the built-in "Reset Position" button.
-- `RegisterCallback(event, callback)` – `event` is `"enter"`, `"exit"`, `"layout"`, `"layoutadded"`, or `"layoutdeleted"`; `layout` callbacks receive `(layoutName, layoutIndex)`.
+- `RegisterCallback(event, callback)` – `event` is `"enter"`, `"exit"`, `"layout"`, `"layoutadded"`, `"layoutdeleted"`, `"layoutrenamed"`, `"layoutduplicate"`, or `"spec"`; `layout` callbacks receive `(layoutName, layoutIndex)`; `spec` receives the current spec index (from `GetSpecialization()`).
 - `GetActiveLayoutName()` / `GetActiveLayoutIndex()` / `IsInEditMode()` – query current state.
 - `GetFrameDefaultPosition(frame)` – retrieve the default position for a registered frame.
 - `lib.internal:RefreshSettings()` – re-evaluate `isEnabled`/`disabled` predicates on visible rows.
