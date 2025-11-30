@@ -13,3 +13,5 @@ ignore:
   - docs
   - .gitmodules
   - .vscode
+  - README-curse.md
+  - scripts/*
