@@ -1952,7 +1952,9 @@ function Internal:CreateDialog()
 		setEyeFrame(dialogEyeTex, LFG_EYE_FRAME_OPEN)
 	end
 	hideLabelButton:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]])
-	hideLabelButton:GetHighlightTexture():SetBlendMode("ADD")
+	if hideLabelButton:GetHighlightTexture() then
+		hideLabelButton:GetHighlightTexture():SetAlpha(0)
+	end
 	hideLabelButton:SetScript("OnClick", function()
 		local selection = dialog.selection
 		if not selection then
