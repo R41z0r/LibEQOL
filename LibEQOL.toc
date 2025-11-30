@@ -4,6 +4,7 @@
 ## Author: R41Z0R
 ## Version: @project-version@
 ## X-Category: Library
+## X-Curse-Project-ID: 1395337
 ## LoadOnDemand: 0
 ## OptionalDeps: LibStub
 
