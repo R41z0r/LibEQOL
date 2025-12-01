@@ -707,7 +707,17 @@ local function buildDropdown()
 		label:SetJustifyH("LEFT")
 		frame.Label = label
 
-		local dropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		local control = CreateFrame("Frame", nil, frame, "SettingsDropdownWithButtonsTemplate")
+		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
+
+		if control.DecrementButton then
+			control.DecrementButton:Hide()
+		end
+		if control.IncrementButton then
+			control.IncrementButton:Hide()
+		end
+
+		local dropdown = control.Dropdown
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
@@ -928,7 +938,17 @@ local function buildMultiDropdown()
 		label:SetJustifyH("LEFT")
 		frame.Label = label
 
-		local dropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		local control = CreateFrame("Frame", nil, frame, "SettingsDropdownWithButtonsTemplate")
+		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
+
+		if control.DecrementButton then
+			control.DecrementButton:Hide()
+		end
+		if control.IncrementButton then
+			control.IncrementButton:Hide()
+		end
+
+		local dropdown = control.Dropdown
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
@@ -1347,7 +1367,17 @@ local function buildDropdownColor()
 		label:SetJustifyH("LEFT")
 		frame.Label = label
 
-		local dropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		local control = CreateFrame("Frame", nil, frame, "SettingsDropdownWithButtonsTemplate")
+		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
+
+		if control.DecrementButton then
+			control.DecrementButton:Hide()
+		end
+		if control.IncrementButton then
+			control.IncrementButton:Hide()
+		end
+
+		local dropdown = control.Dropdown
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
@@ -2301,8 +2331,8 @@ function lib:AddFrame(frame, callback, default)
 			State.dragPredicates[frame] = (default.allowDrag ~= nil) and default.allowDrag or default.dragEnabled
 		end
 		if default.collapseExclusive ~= nil or default.exclusiveCollapse ~= nil then
-			State.collapseExclusiveFlags[frame] =
-				(default.collapseExclusive ~= nil) and default.collapseExclusive or default.exclusiveCollapse
+			State.collapseExclusiveFlags[frame] = (default.collapseExclusive ~= nil) and default.collapseExclusive
+				or default.exclusiveCollapse
 		end
 	end
 
