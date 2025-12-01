@@ -18,6 +18,7 @@ globals = {
 	"UIParent",
 	"Enum",
 	"HUD_EDIT_MODE_HIDE",
+	"HUD_EDIT_MODE_SHOW",
 	"C_EditMode",
 	"C_SpecializationInfo",
 	"InCombatLockdown",
