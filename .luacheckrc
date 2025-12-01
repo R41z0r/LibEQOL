@@ -17,6 +17,7 @@ globals = {
 	"CreateUnsecuredObjectPool",
 	"UIParent",
 	"Enum",
+	"HUD_EDIT_MODE_HIDE",
 	"C_EditMode",
 	"C_SpecializationInfo",
 	"InCombatLockdown",
