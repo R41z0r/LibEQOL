@@ -15,3 +15,7 @@ ignore:
   - .vscode
   - README-curse.md
   - scripts/*
+
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown

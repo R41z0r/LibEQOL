@@ -43,6 +43,7 @@ local State = {
 	collapseFlags = lib.collapseFlags or {},
 	widgetPools = lib.widgetPools or {},
 	overlayToggleFlags = lib.overlayToggleFlags or {},
+	dragPredicates = lib.dragPredicates or {},
 	layoutSnapshot = Internal.layoutNameSnapshot,
 }
 
@@ -55,6 +56,7 @@ lib.resetToggles = State.resetToggles
 lib.collapseFlags = State.collapseFlags
 lib.widgetPools = State.widgetPools
 lib.overlayToggleFlags = State.overlayToggleFlags
+lib.dragPredicates = State.dragPredicates
 
 -- frequently used globals ----------------------------------------------------------
 local CreateFrame = _G.CreateFrame
@@ -340,6 +342,21 @@ local function updateSelectionVisuals(selection, hidden)
 	end
 	updateLabelVisibility(selection, hidden)
 	updateOverlayVisibility(selection, hidden)
+end
+
+local function isDragAllowed(frame)
+	local predicate = State.dragPredicates[frame]
+	if predicate == nil then
+		return true
+	end
+	if type(predicate) == "function" then
+		local ok, result = pcall(predicate, lib.activeLayoutName, lib:GetActiveLayoutIndex())
+		if ok then
+			return result ~= false
+		end
+		return true
+	end
+	return predicate ~= false
 end
 
 -- Layout helpers ------------------------------------------------------------------
@@ -2104,6 +2121,9 @@ local function beginSelectionDrag(self)
 	if isInCombat() then
 		return
 	end
+	if not isDragAllowed(self.parent) then
+		return
+	end
 	self.parent:StartMoving()
 end
 
@@ -2111,6 +2131,9 @@ local function finishSelectionDrag(self)
 	local parent = self.parent
 	parent:StopMovingOrSizing()
 	if isInCombat() then
+		return
+	end
+	if not isDragAllowed(parent) then
 		return
 	end
 	local point, x, y = deriveAnchorAndOffset(parent)
@@ -2178,6 +2201,9 @@ function lib:AddFrame(frame, callback, default)
 		if not selectionFrame.isSelected or isInCombat() then
 			return
 		end
+		if not isDragAllowed(selectionFrame.parent) then
+			return
+		end
 		local step = IsShiftKeyDown() and 10 or 1
 		if key == "UP" then
 			if selectionFrame.SetPropagateKeyboardInput then
@@ -2218,6 +2244,18 @@ function lib:AddFrame(frame, callback, default)
 
 	selection.labelHidden = false
 	selection.overlayHidden = false
+	if default then
+		local toggle = default.enableOverlayToggle
+			or default.overlayToggleEnabled
+			or (default.enableOverlayToggle == false and false)
+			or (default.overlayToggleEnabled == false and false)
+		if toggle ~= nil then
+			State.overlayToggleFlags[frame] = not not toggle
+		end
+		if default.allowDrag ~= nil or default.dragEnabled ~= nil then
+			State.dragPredicates[frame] = (default.allowDrag ~= nil) and default.allowDrag or default.dragEnabled
+		end
+	end
 	if select(4, GetBuildInfo()) >= 110200 then
 		selection.systemBaseName = frame.editModeName or frame:GetName()
 		selection.system = {}
@@ -2315,6 +2353,14 @@ end
 
 function lib:SetFrameResetVisible(frame, showReset)
 	State.resetToggles[frame] = not not showReset
+end
+
+function lib:SetFrameDragEnabled(frame, enabledOrPredicate)
+	if enabledOrPredicate == nil then
+		State.dragPredicates[frame] = nil
+	else
+		State.dragPredicates[frame] = enabledOrPredicate
+	end
 end
 
 function lib:SetFrameOverlayToggleEnabled(frame, enabled)
