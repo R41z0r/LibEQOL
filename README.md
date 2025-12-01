@@ -80,6 +80,7 @@ end)
 - `AddFrameSettings(frame, settingsTable)` – supply rows for the settings dialog. See **Setting rows**.
 - `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler) using the built-in Edit Mode extra button style.
 - `SetFrameResetVisible(frame, showReset)` – hide or re-show the built-in "Reset Position" button.
+- `SetFrameDragEnabled(frame, enabledOrPredicate)` – allow/deny drag + keyboard nudging for a frame; pass a boolean or function `(layoutName, layoutIndex)`; `nil` removes the override. You can also set `defaultPosition.allowDrag`/`dragEnabled` on `AddFrame`.
 - `SetFrameOverlayToggleEnabled(frame, enabled)` – show/hide the eye-button for that frame; default is disabled until you opt-in.
 - `RegisterCallback(event, callback)` – `event` is `"enter"`, `"exit"`, `"layout"`, `"layoutadded"`, `"layoutdeleted"`, `"layoutrenamed"`, `"layoutduplicate"`, or `"spec"`; `layout` callbacks receive `(layoutName, layoutIndex)`; `spec` receives the current spec index (from `GetSpecialization()`).
 - `GetActiveLayoutName()` / `GetActiveLayoutIndex()` / `IsInEditMode()` – query current state.
