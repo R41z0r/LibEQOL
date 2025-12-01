@@ -202,13 +202,50 @@ local examples = {
 		key = "OverlayToggle",
 		title = "Overlay Toggle",
 		color = { 0.4, 0.7, 0.9 },
-		defaults = { point = "CENTER", x = -80, y = -80, enableOverlayToggle = true },
+		defaults = { point = "CENTER", x = -80, y = -80, enableOverlayToggle = true, allowDrag = true },
 		settings = {
 			{
 				name = "Example toggle",
 				kind = EditMode.SettingType.Checkbox,
 				field = "demoToggle",
 				default = true,
+			},
+			{
+				name = "Collapse exclusives",
+				kind = EditMode.SettingType.Checkbox,
+				field = "collapseExclusive",
+				default = true,
+				set = function(layout, value)
+					setField("OverlayToggle", "collapseExclusive", value, layout)
+					EditMode:SetFrameCollapseExclusive(_G["LibEMIExample_OverlayToggle_Frame"], value)
+				end,
+				get = function(layout)
+					return getField("OverlayToggle", "collapseExclusive", true, layout)
+				end,
+				tooltip = "When enabled, expanding one collapsible will collapse the others.",
+			},
+			{
+				name = "Disable drag when parented",
+				kind = EditMode.SettingType.Checkbox,
+				field = "dragCondition",
+				default = false,
+				set = function(layout, value)
+					setField("OverlayToggle", "dragCondition", value, layout)
+					local frame = _G["LibEMIExample_OverlayToggle_Frame"]
+					if frame then
+						if value then
+							EditMode:SetFrameDragEnabled(frame, function()
+								return frame:GetParent() == UIParent
+							end)
+						else
+							EditMode:SetFrameDragEnabled(frame, nil)
+						end
+					end
+				end,
+				get = function(layout)
+					return getField("OverlayToggle", "dragCondition", false, layout)
+				end,
+				tooltip = "If enabled, drag/nudge only works when parent is UIParent.",
 			},
 		},
 	},
@@ -262,6 +299,10 @@ local function registerExample(example)
 		y = example.defaults.y,
 		enableOverlayToggle = example.defaults.enableOverlayToggle,
 		overlayToggleEnabled = example.defaults.overlayToggleEnabled,
+		allowDrag = example.defaults.allowDrag,
+		dragEnabled = example.defaults.dragEnabled,
+		collapseExclusive = example.defaults.collapseExclusive,
+		exclusiveCollapse = example.defaults.exclusiveCollapse,
 	})
 
 	-- settings rows
