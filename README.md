@@ -88,7 +88,7 @@ end)
 - `GetFrameDefaultPosition(frame)` – retrieve the default position for a registered frame.
 - `lib.internal:RefreshSettings()` – re-evaluate `isEnabled`/`disabled` predicates on visible rows.
 
-Example: `examples/EditModeExamples.lua` includes an "Overlay Toggle" frame showing how to opt into the eye-button via `enableOverlayToggle = true`. GIF: https://raw.githubusercontent.com/wiki/R41z0r/LibEQOLWiki/assets/widgets/frames/example-hideoverlay.gif
+Example: `examples/EditModeExamples.lua` (https://raw.githubusercontent.com/R41z0r/LibEQOL/main/examples/EditModeExamples.lua) includes an "Overlay Toggle" frame showing how to opt into the eye-button via `enableOverlayToggle = true`. Also see `docs/overlay-toggle-example.lua`. GIF: https://raw.githubusercontent.com/wiki/R41z0r/LibEQOLWiki/assets/widgets/frames/example-hideoverlay.gif
 
 ## Setting rows (schema + examples)
 Each row needs `name`, `kind`, `get(layoutName)`, `set(layoutName, value)`, and `default`. Optional `isEnabled(layoutName)` or `disabled(layoutName)` toggle availability.

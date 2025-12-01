@@ -194,15 +194,23 @@ local examples = {
 				field = "checkboxColorEnabled",
 				default = true,
 				colorField = "checkboxColor",
-			colorDefault = { 1, 0.8, 0.2, 1 },
-			hasOpacity = true,
+				colorDefault = { 1, 0.8, 0.2, 1 },
+				hasOpacity = true,
+			},
 		},
 	},
 	{
 		key = "OverlayToggle",
 		title = "Overlay Toggle",
 		color = { 0.4, 0.7, 0.9 },
-		defaults = { point = "CENTER", x = -80, y = -80, enableOverlayToggle = true, allowDrag = true },
+		defaults = {
+			point = "CENTER",
+			x = -80,
+			y = -80,
+			enableOverlayToggle = true,
+			allowDrag = true,
+			collapseExclusive = true,
+		},
 		settings = {
 			{
 				name = "Example toggle",
@@ -248,7 +256,6 @@ local examples = {
 				tooltip = "If enabled, drag/nudge only works when parent is UIParent.",
 			},
 		},
-	},
 	},
 	{
 		key = "DropdownColor",
