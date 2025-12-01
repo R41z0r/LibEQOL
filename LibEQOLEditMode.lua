@@ -41,6 +41,7 @@ local State = {
 	buttonSpecs = lib.buttonSpecs or {},
 	resetToggles = lib.resetToggles or {},
 	collapseFlags = lib.collapseFlags or {},
+	collapseExclusiveFlags = lib.collapseExclusiveFlags or {},
 	widgetPools = lib.widgetPools or {},
 	overlayToggleFlags = lib.overlayToggleFlags or {},
 	dragPredicates = lib.dragPredicates or {},
@@ -54,6 +55,7 @@ lib.settingSheets = State.settingSheets
 lib.buttonSpecs = State.buttonSpecs
 lib.resetToggles = State.resetToggles
 lib.collapseFlags = State.collapseFlags
+lib.collapseExclusiveFlags = State.collapseExclusiveFlags
 lib.widgetPools = State.widgetPools
 lib.overlayToggleFlags = State.overlayToggleFlags
 lib.dragPredicates = State.dragPredicates
@@ -1639,6 +1641,21 @@ local function buildCollapsible()
 				elseif selectionParent then
 					Collapse:Set(selectionParent, data.id or data.name, newState)
 				end
+				if State.collapseExclusiveFlags[selectionParent] and newState == false then
+					local settings = Internal:GetFrameSettings(selectionParent)
+					if settings then
+						for _, other in ipairs(settings) do
+							if other ~= data and other.kind == lib.SettingType.Collapsible then
+								local otherId = other.id or other.name
+								if other.setCollapsed then
+									other.setCollapsed(lib.activeLayoutName, true, lib:GetActiveLayoutIndex())
+								elseif selectionParent then
+									Collapse:Set(selectionParent, otherId, true)
+								end
+							end
+						end
+					end
+				end
 				Internal:RefreshSettings()
 				Internal:RefreshSettingValues()
 			end)
@@ -2280,6 +2297,13 @@ function lib:AddFrame(frame, callback, default)
 		if toggle ~= nil then
 			State.overlayToggleFlags[frame] = not not toggle
 		end
+		if default.allowDrag ~= nil or default.dragEnabled ~= nil then
+			State.dragPredicates[frame] = (default.allowDrag ~= nil) and default.allowDrag or default.dragEnabled
+		end
+		if default.collapseExclusive ~= nil or default.exclusiveCollapse ~= nil then
+			State.collapseExclusiveFlags[frame] =
+				(default.collapseExclusive ~= nil) and default.collapseExclusive or default.exclusiveCollapse
+		end
 	end
 
 	if not Internal.dialog then
@@ -2360,6 +2384,14 @@ function lib:SetFrameDragEnabled(frame, enabledOrPredicate)
 		State.dragPredicates[frame] = nil
 	else
 		State.dragPredicates[frame] = enabledOrPredicate
+	end
+end
+
+function lib:SetFrameCollapseExclusive(frame, enabled)
+	if enabled == nil then
+		State.collapseExclusiveFlags[frame] = nil
+	else
+		State.collapseExclusiveFlags[frame] = not not enabled
 	end
 end
 
