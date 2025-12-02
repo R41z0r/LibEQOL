@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
+"""
+Bump the SettingsLib composite version across all Settings files.
+
+Composite scheme: version = major * 1_000_000 + minor * 1_000 + patch
+This allows 3 digits each for minor/patch (0-999). Adjust constants if needed.
+"""
+
+from __future__ import annotations
+
 import json
 import re
 import sys
 from pathlib import Path
 
-# Composite version scheme: major * 1_000_000 + minor * 1_000 + patch
-WIDTH_MINOR = 3
-WIDTH_PATCH = 3
-MULT_MINOR = 1000
-MULT_MAJOR = 1000000
+COMPOSITE_MINOR_MULT = 1000
+COMPOSITE_MAJOR_MULT = 1_000_000
 
 VERSION_FILE = Path("scripts/settings-version.json")
 TARGETS = [
@@ -19,26 +25,30 @@ TARGETS = [
 ]
 
 
-def load_version():
+def load_version() -> dict:
     if VERSION_FILE.exists():
         with VERSION_FILE.open() as fh:
             return json.load(fh)
-    # Default seed for major/minor/patch
+    # Default seed
     return {"major": 2, "minor": 0, "patch": 0}
 
 
-def save_version(ver):
+def save_version(ver: dict) -> None:
     VERSION_FILE.parent.mkdir(parents=True, exist_ok=True)
     with VERSION_FILE.open("w") as fh:
         json.dump(ver, fh, indent=2)
         fh.write("\n")
 
 
-def composite(ver):
-    return ver["major"] * MULT_MAJOR + ver["minor"] * MULT_MINOR + ver["patch"]
+def composite(ver: dict) -> int:
+    return (
+        ver["major"] * COMPOSITE_MAJOR_MULT
+        + ver["minor"] * COMPOSITE_MINOR_MULT
+        + ver["patch"]
+    )
 
 
-def bump(ver, level):
+def bump(ver: dict, level: str) -> dict:
     ver = dict(ver)
     if level == "major":
         ver["major"] += 1
@@ -52,30 +62,28 @@ def bump(ver, level):
     return ver
 
 
-def update_file(path, value):
+def update_file(path: Path, value: int) -> None:
     text = path.read_text()
-    pattern = r'(LibEQOLSettingsMode-1\.0",\s*)(\d+)'
-    repl = r"\\1{}".format(value)
-    new_text, count = re.subn(pattern, repl, text)
+    pattern = re.compile(r'("LibEQOLSettingsMode-1\.0"\s*,\s*)(\d+)')
+    new_text, count = pattern.subn(r"\g<1>{}".format(value), text, count=1)
     if count == 0:
         raise SystemExit(f"No version marker found in {path}")
     path.write_text(new_text)
 
 
-def main():
+def main() -> None:
     level = "patch"
     if len(sys.argv) > 1:
-        if sys.argv[1] in ("--major", "major"):
-            level = "major"
-        elif sys.argv[1] in ("--minor", "minor"):
-            level = "minor"
+        arg = sys.argv[1].lstrip("-").lower()
+        if arg in ("major", "minor", "patch"):
+            level = arg
     ver = load_version()
     ver = bump(ver, level)
     value = composite(ver)
     save_version(ver)
     for target in TARGETS:
         update_file(target, value)
-    print(f"Updated version to {ver['major']}.{ver['minor']}.{ver['patch']} (composite {value})")
+    print(f"Updated SettingsLib version to {ver['major']}.{ver['minor']}.{ver['patch']} (composite {value})")
 
 
 if __name__ == "__main__":

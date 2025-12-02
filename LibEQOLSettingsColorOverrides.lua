@@ -1,4 +1,4 @@
-local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 2
+local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 2000001
 local ok, lib = pcall(LibStub, MODULE_MAJOR)
 if not ok or not lib then
 	return

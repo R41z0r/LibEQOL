@@ -18,9 +18,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup Python (for version bump script)
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
       - name: Hack around https://github.com/actions/checkout/issues/290
         run: |
           git fetch --tags --force
+
+      - name: Bump SettingsLib composite version (patch)
+        run: python3 scripts/bump_settings_version.py
+
+      - name: Show bumped SettingsLib version
+        run: |
+          echo "Settings version JSON:"
+          cat scripts/settings-version.json
 
       - name: Install and run Luacheck
         uses: nebularg/actions-luacheck@v1
