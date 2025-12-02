@@ -252,18 +252,12 @@ end
 
 function lib:CreateColorOverrides(cat, data)
 	assert(cat and data and data.entries, "category and entries required")
-	local initializer = Settings.CreateElementInitializer("LibEQOL_ColorOverridesPanel", {
+	local initializer = Settings.CreateElementInitializer("LibEQOL_ColorOverridesPanelNoHead", {
 		categoryID = cat:GetID(),
 		entries = data.entries,
 		getColor = data.getColor,
 		setColor = data.setColor,
 		getDefaultColor = data.getDefaultColor,
-		headerText = data.headerText or data.name or data.text,
-		rowHeight = data.rowHeight,
-		basePadding = data.basePadding,
-		minHeight = data.minHeight,
-		height = data.height,
-		spacing = data.spacing,
 		parentCheck = data.parentCheck,
 	})
 	addSearchTags(initializer, data.searchtags, data.name or data.text)
@@ -310,7 +304,7 @@ function lib:CreateHeader(cat, text)
 end
 
 function lib:CreateText(cat, text)
-	local init = Settings.CreateElementInitializer("SettingsListSectionHeaderTemplate", { name = text })
+	local init = Settings.CreateElementInitializer("LibEQOL_SettingsListSectionHintTemplate", { name = text })
 	addSearchTags(init, text, text)
 	Settings.RegisterInitializer(cat, init)
 	return init

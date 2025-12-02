@@ -22,32 +22,25 @@ end
 function LibEQOL_ColorOverridesMixin:OnLoad()
 	SettingsListElementMixin.OnLoad(self)
 	self.container = self.List or self
-	local poolTemplate = "LibEQOL_ColorOverrideRowTemplate"
-	local pool = CreateFramePool("FRAME", self.container, poolTemplate)
-	if not pool and ColorOverrideTemplate then
-		poolTemplate = "ColorOverrideTemplate"
-		pool = CreateFramePool("FRAME", self.container, poolTemplate)
-	end
-	self.ColorOverrideFramePool = pool
+	self.ColorOverrideFramePool = CreateFramePool("FRAME", self.container, "ColorOverrideTemplate")
 	self.colorOverrideFrames = {}
 end
 
 function LibEQOL_ColorOverridesMixin:Init(initializer)
 	SettingsListElementMixin.Init(self, initializer)
 
-	local data = initializer.data or {}
-	self.categoryID = data.categoryID
-	self.entries = data.entries or {}
-	self.getColor = data.getColor
-	self.setColor = data.setColor
-	self.getDefaultColor = data.getDefaultColor
-	self.headerText = data.headerText or ""
-	self.rowHeight = data.rowHeight or DEFAULT_ROW_HEIGHT
-	self.basePadding = data.basePadding or DEFAULT_PADDING
-	self.minHeight = data.minHeight
-	self.fixedHeight = data.height
-	self.fixedSpacing = data.spacing
-	self.parentCheck = data.parentCheck
+	self.categoryID = initializer.data.categoryID
+	self.entries = initializer.data.entries or {}
+	self.getColor = initializer.data.getColor
+	self.setColor = initializer.data.setColor
+	self.getDefaultColor = initializer.data.getDefaultColor
+	self.headerText = initializer.data.headerText or ""
+	self.rowHeight = initializer.data.rowHeight or DEFAULT_ROW_HEIGHT
+	self.basePadding = initializer.data.basePadding or DEFAULT_PADDING
+	self.minHeight = initializer.data.minHeight
+	self.fixedHeight = initializer.data.height
+	self.fixedSpacing = initializer.data.spacing
+	self.parentCheck = initializer.data.parentCheck
 
 	if self.Header then
 		self.Header:SetText(self.headerText)
