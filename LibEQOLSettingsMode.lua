@@ -30,12 +30,40 @@ local State = {
 	settingPrefixes = {},
 }
 
+local function prefixNotifyTag(tag, setting)
+	if type(tag) ~= "string" or tag == "" then
+		return tag
+	end
+
+	-- If the tag is already prefixed, keep it
+	for prefix in pairs(State.newTagResolvers) do
+		if tag:find(prefix, 1, true) == 1 then
+			return tag
+		end
+	end
+	if State.prefixSet and tag:find(State.prefix, 1, true) == 1 then
+		return tag
+	end
+
+	-- Prefer the setting's prefix, then the global prefix
+	local settingVar = setting and setting.GetVariable and setting:GetVariable()
+	local tagPrefix = (settingVar and State.settingPrefixes[settingVar])
+		or State.settingPrefixes[tag]
+		or (State.prefixSet and State.prefix)
+	if tagPrefix and not tag:find(tagPrefix, 1, true) then
+		return tagPrefix .. tag
+	end
+
+	return tag
+end
+
 local function attachNotify(setting, tag)
 	if not (setting and setting.SetValueChangedCallback) then
 		return
 	end
 
 	local notifyTag = tag or (setting.GetVariable and setting:GetVariable()) or setting.variable
+	notifyTag = prefixNotifyTag(notifyTag, setting)
 	if not notifyTag or notifyTag == "" then
 		return
 	end
@@ -49,7 +77,9 @@ local function maybeAttachNotify(setting, data)
 	if not (data and data.notify) then
 		return
 	end
-	local notifyTag = (data.notify == true) and ((setting and setting.GetVariable and setting:GetVariable()) or (setting and setting.variable)) or data.notify
+	local notifyTag = (data.notify == true)
+			and ((setting and setting.GetVariable and setting:GetVariable()) or (setting and setting.variable))
+		or data.notify
 	attachNotify(setting, notifyTag)
 end
 
@@ -115,11 +145,11 @@ local function hookNewTag()
 	end
 	State._hooked = true
 
-hooksecurefunc(SettingsCategoryListButtonMixin, "Init", function(self, initializer)
-	local category = initializer.data.category
-	if category and shouldShowNewTag(category) and self.NewFeature then
-		self.NewFeature:SetShown(true)
-	end
+	hooksecurefunc(SettingsCategoryListButtonMixin, "Init", function(self, initializer)
+		local category = initializer.data.category
+		if category and shouldShowNewTag(category) and self.NewFeature then
+			self.NewFeature:SetShown(true)
+		end
 	end)
 
 	local function tagControl(self)
@@ -147,7 +177,6 @@ function lib:SetDefaultRootName(name)
 		State.rootName = name
 	end
 end
-
 
 local function prefixTag(tag)
 	if type(tag) ~= "string" then
@@ -223,7 +252,11 @@ local function registerSetting(cat, key, varType, name, default, getter, setter,
 	local variable = data and data.variable
 
 	if not (State.prefixSet or prefix or variable) then
-		error(("LibEQOLSettingsMode: SetVariablePrefix(...) must be called before registering settings (missing before key '%s'). Alternatively pass data.prefix or data.variable."):format(tostring(key)))
+		error(
+			("LibEQOLSettingsMode: SetVariablePrefix(...) must be called before registering settings (missing before key '%s'). Alternatively pass data.prefix or data.variable."):format(
+				tostring(key)
+			)
+		)
 	end
 
 	if not variable then
@@ -248,7 +281,9 @@ function lib:CreateCheckbox(cat, data)
 		Settings.VarType.Boolean,
 		data.name or data.text or data.key,
 		data.default ~= nil and data.default or false,
-		data.get or function() return data.default end,
+		data.get or function()
+			return data.default
+		end,
 		data.set,
 		data
 	)
@@ -395,7 +430,9 @@ function lib:CreateMultiDropdown(cat, data)
 		Settings.VarType.String,
 		data.name or data.text or data.key,
 		"",
-		function() return "" end,
+		function()
+			return ""
+		end,
 		function() end,
 		data
 	)
@@ -434,7 +471,8 @@ end
 
 function lib:CreateButton(cat, data)
 	assert(cat and data and data.text, "category and data.text required")
-	local btn = CreateSettingsButtonInitializer("", data.text, data.click or data.func, data.desc, data.searchtags or false)
+	local btn =
+		CreateSettingsButtonInitializer("", data.text, data.click or data.func, data.desc, data.searchtags or false)
 	SettingsPanel:GetLayout(cat):AddInitializer(btn)
 	applyParentInitializer(btn, data.parent, data.parentCheck)
 	State.elements[data.key or data.text] = btn
@@ -443,7 +481,8 @@ end
 
 function lib:CreateKeybind(cat, data)
 	assert(cat and data and data.bindingIndex, "category and data.bindingIndex required")
-	local initializer = Settings.CreateElementInitializer("KeyBindingFrameBindingTemplate", { bindingIndex = data.bindingIndex })
+	local initializer =
+		Settings.CreateElementInitializer("KeyBindingFrameBindingTemplate", { bindingIndex = data.bindingIndex })
 	addSearchTags(initializer, data.searchtags, data.name or data.text)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
 	Settings.RegisterInitializer(cat, initializer)
@@ -462,7 +501,12 @@ end
 function lib:SetVariablePrefix(prefix)
 	if type(prefix) == "string" and prefix ~= "" then
 		if State.prefixSet and prefix ~= State.prefix then
-			error(("LibEQOLSettingsMode: prefix already set to '%s'; refusing to change to '%s'. Use data.prefix per control if you need multiple namespaces."):format(tostring(State.prefix), tostring(prefix)))
+			error(
+				("LibEQOLSettingsMode: prefix already set to '%s'; refusing to change to '%s'. Use data.prefix per control if you need multiple namespaces."):format(
+					tostring(State.prefix),
+					tostring(prefix)
+				)
+			)
 		end
 		State.prefix = prefix
 		State.prefixSet = true
