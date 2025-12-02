@@ -4,11 +4,38 @@ if not lib then
 	return
 end
 
-local addonName, addon = ...
-
 LibEQOL_MultiDropdownMixin = CreateFromMixins(SettingsDropdownControlMixin)
 
 local SUMMARY_CHAR_LIMIT = 80
+local function NormalizeSelection(selection)
+	local map = {}
+	if type(selection) ~= "table" then
+		return map
+	end
+
+	if #selection > 0 then
+		for _, value in ipairs(selection) do
+			if value ~= nil then map[value] = true end
+		end
+	else
+		for key, value in pairs(selection) do
+			if value then map[key] = true end
+		end
+	end
+	return map
+end
+
+local function CopySelection(selection)
+	local copy = {}
+	if type(selection) ~= "table" then
+		return copy
+	end
+	for key, value in pairs(selection) do
+		if value then copy[key] = true end
+	end
+	return copy
+end
+
 local function SortMixedKeys(keys)
 	table.sort(keys, function(a, b)
 		local ta, tb = type(a), type(b)
@@ -31,9 +58,10 @@ function LibEQOL_MultiDropdownMixin:OnLoad()
 	if self.Summary then
 		self.Summary:SetText("")
 		self.Summary:Hide()
-		self.Summary = nil
 	end
 
+	self.selectionCache = nil
+	self.summaryAnchored = nil
 	self:EnsureSummaryAnchors()
 end
 
@@ -83,6 +111,7 @@ function LibEQOL_MultiDropdownMixin:SetOptions(list)
 	end
 
 	self.options = normalized
+	self.selectionCache = nil
 end
 
 function LibEQOL_MultiDropdownMixin:GetOptions()
@@ -102,19 +131,22 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	-- Unsere eigenen Daten zuerst setzen
 	self.initializer = initializer
 
-	local data = initializer:GetData()
-	-- data = { var = "abc", label = "...", options = {...}, db = addon.db }
+	local data = initializer:GetData() or {}
+	-- data = { var = "abc", label = "...", options = {...}, db = myDB, getSelection = ..., setSelection = ... }
 
 	self.var = data.var
-	self.optionfunc = data.optionfunc
-	self.isSelectedFunc = data.isSelectedFunc
-	self.setSelectedFunc = data.setSelectedFunc
-	self:SetOptions(data.options or {})
-	self.db = addon.db
 	self.subvar = data.subvar
+	self.db = data.db
+	self.optionfunc = data.optionfunc
+	self.isSelectedFunc = data.isSelectedFunc or data.isSelected
+	self.setSelectedFunc = data.setSelectedFunc or data.setSelected
+	self.getSelectionFunc = data.getSelection or data.get
+	self.setSelectionFunc = data.setSelection or data.set
+	self.summaryFunc = data.summaryFunc or data.summary
+	self.hideSummary = data.hideSummary
 	self.callback = data.callback
 
-	if not self.db then error("LibEQOL_MultiDropdownMixin: data.db fehlt") end
+	self:SetOptions(data.options or data.values or {})
 
 	-- Jetzt Basis-Init, das InitDropdown + EvaluateState ruft (unsere überschriebenen Versionen)
 	SettingsDropdownControlMixin.Init(self, initializer)
@@ -123,14 +155,19 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	if data.label then self.Text:SetText(data.label) end
 
 	-- Summary initial anzeigen
-	self:RefreshSummary()
+	if not self.hideSummary then
+		self:RefreshSummary()
+	end
+	self:SyncSetting()
 end
 
--- --- Auswahlmodell: Tabelle in addon.db[var] ---
+-- Auswahlmodell
 
-function LibEQOL_MultiDropdownMixin:GetSelectionTable()
-	self.db = self.db or addon.db
-	if type(self.db) ~= "table" then self.db = {} end
+function LibEQOL_MultiDropdownMixin:GetLegacySelectionTable()
+	if type(self.db) ~= "table" or not self.var then
+		self.legacySelection = self.legacySelection or {}
+		return self.legacySelection
+	end
 
 	local container = self.db[self.var]
 	if type(container) ~= "table" then
@@ -146,50 +183,103 @@ function LibEQOL_MultiDropdownMixin:GetSelectionTable()
 	return container
 end
 
-function LibEQOL_MultiDropdownMixin:IsSelected(key)
-	if self.isSelectedFunc then return self.isSelectedFunc(key) and true or false end
-	return self:GetSelectionTable()[key] == true
-end
+function LibEQOL_MultiDropdownMixin:RefreshSelectionCache()
+	local selection
 
-function LibEQOL_MultiDropdownMixin:SetSelected(key, shouldSelect)
-	if self.setSelectedFunc then
-		self.setSelectedFunc(key, shouldSelect)
-	else
-		local selection = self:GetSelectionTable()
-		if shouldSelect then
-			selection[key] = true
-		else
-			selection[key] = nil
+	if self.getSelectionFunc then
+		local ok, result = pcall(self.getSelectionFunc)
+		if ok then selection = NormalizeSelection(result) end
+	end
+
+	if not selection and self.isSelectedFunc then
+		selection = {}
+		for _, opt in ipairs(self:GetOptions()) do
+			if opt.value ~= nil then
+				local ok, selected = pcall(self.isSelectedFunc, opt.value, opt)
+				if ok and selected then selection[opt.value] = true end
+			end
 		end
 	end
 
-	self:SyncSetting()
+	if not selection then
+		selection = NormalizeSelection(self:GetLegacySelectionTable())
+	end
+
+	self.selectionCache = selection or {}
+	return self.selectionCache
 end
 
 function LibEQOL_MultiDropdownMixin:GetSelectionMap()
-	if not self.setSelectedFunc then return self:GetSelectionTable() end
-
-	local snapshot = {}
-	for _, opt in ipairs(self:GetOptions()) do
-		if opt.value ~= nil and self:IsSelected(opt.value) then snapshot[opt.value] = true end
-	end
-	return snapshot
+	return self.selectionCache or self:RefreshSelectionCache()
 end
 
-function LibEQOL_MultiDropdownMixin:SyncSetting()
+function LibEQOL_MultiDropdownMixin:GetSelectionMapSnapshot()
+	return CopySelection(self:GetSelectionMap())
+end
+
+function LibEQOL_MultiDropdownMixin:IsSelected(key, option)
+	if self.isSelectedFunc then
+		local ok, result = pcall(self.isSelectedFunc, key, option)
+		if ok and result ~= nil then return result and true or false end
+	end
+
+	return self:GetSelectionMap()[key] == true
+end
+
+function LibEQOL_MultiDropdownMixin:ApplyLegacySelection(selection)
+	local target = self:GetLegacySelectionTable()
+	for existing in pairs(target) do
+		target[existing] = nil
+	end
+	for k, v in pairs(selection) do
+		if v then target[k] = true end
+	end
+end
+
+function LibEQOL_MultiDropdownMixin:SetSelected(key, shouldSelect, option)
+	local selection = self:GetSelectionMapSnapshot()
+
+	if shouldSelect then
+		selection[key] = true
+	else
+		selection[key] = nil
+	end
+
+	if self.setSelectedFunc then
+		pcall(self.setSelectedFunc, key, shouldSelect, option)
+	elseif self.setSelectionFunc then
+		pcall(self.setSelectionFunc, CopySelection(selection), option)
+	else
+		self:ApplyLegacySelection(selection)
+	end
+
+	if self.getSelectionFunc or self.isSelectedFunc or self.db or self.var or self.subvar then
+		self.selectionCache = nil
+		selection = self:GetSelectionMap()
+	else
+		self.selectionCache = selection
+	end
+
+	self:SyncSetting(selection)
+end
+
+function LibEQOL_MultiDropdownMixin:SyncSetting(selection)
 	local setting = self:GetSetting()
 	if not setting then return end
 
-	setting:SetValue(self:SerializeSelection(self:GetSelectionMap()))
+	setting:SetValue(self:SerializeSelection(selection or self:GetSelectionMap()))
 end
 
-function LibEQOL_MultiDropdownMixin:ToggleOption(key)
-	local newState = not self:IsSelected(key)
-	self:SetSelected(key, newState)
+function LibEQOL_MultiDropdownMixin:ToggleOption(key, option)
+	self:RefreshSelectionCache()
+	local newState = not self:IsSelected(key, option)
+	self:SetSelected(key, newState, option)
 	self:RefreshSummary()
 end
 
 function LibEQOL_MultiDropdownMixin:SerializeSelection(tbl)
+	if type(tbl) ~= "table" then return "" end
+
 	local keys = {}
 	for k, v in pairs(tbl) do
 		if v then table.insert(keys, k) end
@@ -199,17 +289,25 @@ function LibEQOL_MultiDropdownMixin:SerializeSelection(tbl)
 end
 
 function LibEQOL_MultiDropdownMixin:RefreshSummary()
-	if not self.Summary then return end
+	if self.hideSummary or not self.Summary then return end
 
+	self:RefreshSelectionCache()
 	self:EnsureSummaryAnchors()
 
 	local texts = {}
 	for _, opt in ipairs(self:GetOptions()) do
-		if opt.value ~= nil and self:IsSelected(opt.value) then table.insert(texts, opt.text or tostring(opt.value)) end
+		if opt.value ~= nil and self:IsSelected(opt.value, opt) then table.insert(texts, opt.text or tostring(opt.value)) end
 	end
 
-	local summary = self:FormatSummaryText(texts)
+	local summary = nil
+	if self.summaryFunc then
+		local ok, custom = pcall(self.summaryFunc, self:GetSelectionMap(), texts)
+		if ok and custom then summary = tostring(custom) end
+	end
+
+	summary = summary or self:FormatSummaryText(texts)
 	self.Summary:SetText(summary)
+	self.Summary:Show()
 end
 
 function LibEQOL_MultiDropdownMixin:EnsureSummaryAnchors()
@@ -321,14 +419,15 @@ function LibEQOL_MultiDropdownMixin:SetupDropdownMenu(button, setting, optionsFu
 	dropdown:SetupMenu(function(_, rootDescription)
 		rootDescription:SetGridMode(MenuConstants.VerticalGridDirection)
 
+		self:RefreshSelectionCache()
 		local opts = optionsFunc() or {}
 
 		for _, opt in ipairs(opts) do
 			if opt.value ~= nil then
 				local label = opt.label or opt.text or tostring(opt.value)
 
-				rootDescription:CreateCheckbox(label, function() return self:IsSelected(opt.value) end, function()
-					self:ToggleOption(opt.value)
+				rootDescription:CreateCheckbox(label, function() return self:IsSelected(opt.value, opt) end, function()
+					self:ToggleOption(opt.value, opt)
 					if self.callback then self.callback(opt) end
 				end, opt)
 			end
