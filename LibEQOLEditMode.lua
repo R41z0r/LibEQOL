@@ -40,6 +40,7 @@ local State = {
 	settingSheets = lib.settingSheets or {},
 	buttonSpecs = lib.buttonSpecs or {},
 	resetToggles = lib.resetToggles or {},
+	settingsResetToggles = lib.settingsResetToggles or {},
 	collapseFlags = lib.collapseFlags or {},
 	collapseExclusiveFlags = lib.collapseExclusiveFlags or {},
 	widgetPools = lib.widgetPools or {},
@@ -54,6 +55,7 @@ lib.defaultPositions = State.defaultPositions
 lib.settingSheets = State.settingSheets
 lib.buttonSpecs = State.buttonSpecs
 lib.resetToggles = State.resetToggles
+lib.settingsResetToggles = State.settingsResetToggles
 lib.collapseFlags = State.collapseFlags
 lib.collapseExclusiveFlags = State.collapseExclusiveFlags
 lib.widgetPools = State.widgetPools
@@ -1868,7 +1870,12 @@ function Dialog:UpdateSettings()
 
 	self.Settings.ResetButton.layoutIndex = num + 1
 	self.Settings.Divider.layoutIndex = num + 2
+	local showSettingsReset = State.settingsResetToggles[self.selection.parent]
+	if showSettingsReset == nil then
+		showSettingsReset = true
+	end
 	self.Settings.ResetButton:SetEnabled(num > 0)
+	self.Settings.ResetButton:SetShown(showSettingsReset)
 	if self.Settings and self.Settings.Layout then
 		self.Settings:Layout()
 	end
@@ -2334,6 +2341,12 @@ function lib:AddFrame(frame, callback, default)
 			State.collapseExclusiveFlags[frame] = (default.collapseExclusive ~= nil) and default.collapseExclusive
 				or default.exclusiveCollapse
 		end
+		if default.showReset ~= nil then
+			State.resetToggles[frame] = not not default.showReset
+		end
+		if default.showSettingsReset ~= nil then
+			State.settingsResetToggles[frame] = not not default.showSettingsReset
+		end
 	end
 
 	if not Internal.dialog then
@@ -2407,6 +2420,16 @@ end
 
 function lib:SetFrameResetVisible(frame, showReset)
 	State.resetToggles[frame] = not not showReset
+	if Internal.dialog and Internal.dialog.selection and Internal.dialog.selection.parent == frame then
+		Internal.dialog:UpdateButtons()
+	end
+end
+
+function lib:SetFrameSettingsResetVisible(frame, showReset)
+	State.settingsResetToggles[frame] = not not showReset
+	if Internal.dialog and Internal.dialog.selection and Internal.dialog.selection.parent == frame then
+		Internal.dialog:UpdateSettings()
+	end
 end
 
 function lib:SetFrameDragEnabled(frame, enabledOrPredicate)
