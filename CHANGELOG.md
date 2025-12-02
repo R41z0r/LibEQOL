@@ -9,6 +9,7 @@
 - MultiDropdown refactored to be data-driven (no addon.db coupling), supports `getSelection`/`setSelection` or `isSelected`/`setSelected`, custom summaries, and summary hiding.
 - Notify hooks (`notify`/`AttachNotify`) now available on all Settings controls and auto-prefix their tags.
 - Sound dropdown defaults no longer require a global localization table; other dropdowns and sliders retain existing behaviors.
+- Edit Mode: added overlap chooser menu when multiple registered frames sit under the cursor (pick target on click).
 - Option to disable the drag feature per condition and per API call
 - Option to hide visibility of EditMode overlay per Frame with an icon
   - can be disabled/enabled by api or default values
