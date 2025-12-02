@@ -8,47 +8,51 @@ local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 
 LibEQOL_SoundDropdownMixin = CreateFromMixins(SettingsListElementMixin)
 
-local DEFAULT_FRAME_WIDTH = 300
+local DEFAULT_FRAME_WIDTH = 280
 local DEFAULT_FRAME_HEIGHT = 26
 local DEFAULT_MENU_HEIGHT = 200
 local DEFAULT_LABEL_OFFSET_LEFT = 37
 local DEFAULT_LABEL_OFFSET_RIGHT = -85
 local DEFAULT_PREVIEW_POINT = { "LEFT", nil, "CENTER", -74, 0 }
 
-local DEFAULT_PLACEHOLDER = _G.NONE or "None"
-local DEFAULT_PREVIEW_TOOLTIP = "Preview Sound"
-local DEFAULT_LABEL = "Sound"
-
-local function cloneOption(option)
-	if type(option) ~= "table" then
-		return { value = option, label = tostring(option) }
+local function ResolveString(defaultValue, ...)
+	for _, candidate in ipairs({ ... }) do
+		if type(candidate) == "string" and candidate ~= "" then return candidate end
 	end
+	return defaultValue
+end
+
+local DEFAULT_PLACEHOLDER = ResolveString("None", _G and _G.NONE)
+local DEFAULT_PREVIEW_TOOLTIP = ResolveString("Preview Sound", _G.PREVIEW)
+local DEFAULT_LABEL = ResolveString("Sound", _G and _G.SOUND)
+
+local function CloneOption(option)
+	if type(option) ~= "table" then return { value = option, label = tostring(option) } end
+
 	local clone = {}
 	for key, value in pairs(option) do
 		clone[key] = value
 	end
+
 	clone.value = clone.value or clone.text or clone.label
 	clone.label = clone.label or clone.text or tostring(clone.value or "")
 	return clone
 end
 
-local function normalizeOptions(list)
-	if type(list) ~= "table" then
-		return {}
-	end
+local function NormalizeOptions(list)
+	if type(list) ~= "table" then return {} end
+
 	local normalized = {}
 	local usesIndex = #list > 0
 
 	if usesIndex then
 		for _, entry in ipairs(list) do
-			if entry ~= nil then
-				table.insert(normalized, cloneOption(entry))
-			end
+			if entry ~= nil then table.insert(normalized, CloneOption(entry)) end
 		end
 	else
 		for value, label in pairs(list) do
 			if type(label) == "table" then
-				local cloned = cloneOption(label)
+				local cloned = CloneOption(label)
 				cloned.value = cloned.value or value
 				table.insert(normalized, cloned)
 			else
@@ -64,10 +68,8 @@ local function normalizeOptions(list)
 	return normalized
 end
 
-local function applySingleAnchor(widget, anchor, defaultRelative)
-	if not widget then
-		return
-	end
+local function ApplySingleAnchor(widget, anchor, defaultRelative)
+	if not widget then return end
 	widget:ClearAllPoints()
 
 	if type(anchor) == "table" then
@@ -90,7 +92,7 @@ local function applySingleAnchor(widget, anchor, defaultRelative)
 	end
 end
 
-local function applyAnchors(widget, anchors, fallbackRelative)
+local function ApplyAnchors(widget, anchors, fallbackRelative)
 	if type(anchors) == "table" and anchors[1] and type(anchors[1]) == "table" then
 		widget:ClearAllPoints()
 		for _, anchor in ipairs(anchors) do
@@ -103,41 +105,42 @@ local function applyAnchors(widget, anchors, fallbackRelative)
 		end
 		return
 	end
-	applySingleAnchor(widget, anchors, fallbackRelative)
+
+	ApplySingleAnchor(widget, anchors, fallbackRelative)
+end
+
+local function SafeUnregister(handle)
+	if handle and handle.Unregister then handle:Unregister() end
 end
 
 function LibEQOL_SoundDropdownMixin:OnLoad()
 	SettingsListElementMixin.OnLoad(self)
-	if self.NewFeature then
-		self.NewFeature:SetShown(false)
-	end
+	if self.NewFeature then self.NewFeature:SetShown(false) end
 end
 
 function LibEQOL_SoundDropdownMixin:Init(initializer)
 	SettingsListElementMixin.Init(self, initializer)
 
 	self.initializer = initializer
-	local data = initializer.data or {}
-	self.setting = initializer:GetSetting() or data.setting
-	self.parentCheck = data.parentCheck
-	self.options = data.options
-	self.optionfunc = data.optionfunc
-	self.callback = data.callback
-	self.soundResolver = data.soundResolver
-	self.previewSoundFunc = data.previewSoundFunc
-	self.playbackChannel = data.playbackChannel
-	self.getPlaybackChannel = data.getPlaybackChannel
-	self.placeholderText = data.placeholderText or DEFAULT_PLACEHOLDER
-	self.previewTooltip = data.previewTooltip or DEFAULT_PREVIEW_TOOLTIP
-	self.labelText = data.name or data.label or DEFAULT_LABEL
-	self.menuHeight = data.menuHeight or DEFAULT_MENU_HEIGHT
-	self.frameWidth = data.frameWidth or DEFAULT_FRAME_WIDTH
-	self.frameHeight = data.frameHeight or DEFAULT_FRAME_HEIGHT
+	self.data = initializer.data or {}
+	self.setting = initializer:GetSetting() or self.data.setting
+	self.parentCheck = self.data.parentCheck
+	self.options = self.data.options
+	self.optionfunc = self.data.optionfunc
+	self.callback = self.data.callback
+	self.soundResolver = self.data.soundResolver
+	self.previewSoundFunc = self.data.previewSoundFunc
+	self.playbackChannel = self.data.playbackChannel
+	self.getPlaybackChannel = self.data.getPlaybackChannel
+	self.placeholderText = ResolveString(DEFAULT_PLACEHOLDER, self.data.placeholderText)
+	self.previewTooltip = ResolveString(DEFAULT_PREVIEW_TOOLTIP, self.data.previewTooltip)
+	self.labelText = ResolveString(DEFAULT_LABEL, self.data.name, self.data.label)
+	self.menuHeight = self.data.menuHeight or DEFAULT_MENU_HEIGHT
+	self.frameWidth = self.data.frameWidth or DEFAULT_FRAME_WIDTH
+	self.frameHeight = self.data.frameHeight or DEFAULT_FRAME_HEIGHT
 	self.optionsChangedVersion = 0
 
-	if not self.cbrHandles then
-		self.cbrHandles = Settings.CreateCallbackHandleContainer()
-	end
+	if not self.cbrHandles then self.cbrHandles = Settings.CreateCallbackHandleContainer() end
 
 	self:SetSize(self.frameWidth, self.frameHeight)
 	self:SetupLabel()
@@ -148,20 +151,14 @@ function LibEQOL_SoundDropdownMixin:Init(initializer)
 end
 
 function LibEQOL_SoundDropdownMixin:GetSetting()
-	if self.setting then
-		return self.setting
-	end
-	if self.initializer and self.initializer.GetSetting then
-		self.setting = self.initializer:GetSetting()
-	end
+	if self.setting then return self.setting end
+	if self.initializer and self.initializer.GetSetting then self.setting = self.initializer:GetSetting() end
 	return self.setting
 end
 
 function LibEQOL_SoundDropdownMixin:SetupLabel()
-	if not self.Text then
-		return
-	end
-	self.Text:SetFontObject("GameFontNormal")
+	if not self.Text then return end
+	self.Text:SetFontObject(self.data.labelFontObject or "GameFontNormal")
 	self.Text:SetText(self.labelText)
 	self.Text:ClearAllPoints()
 	local textLeft = (self:GetIndent() or 0) + DEFAULT_LABEL_OFFSET_LEFT
@@ -170,146 +167,195 @@ function LibEQOL_SoundDropdownMixin:SetupLabel()
 end
 
 function LibEQOL_SoundDropdownMixin:SetupPreviewButton()
-	if self.previewButton then
-		return
-	end
+	if self.previewButton then return end
 
 	local button = CreateFrame("Button", nil, self)
-	button:SetSize(self.frameHeight, self.frameHeight)
-	applySingleAnchor(button, DEFAULT_PREVIEW_POINT, self)
+	button:SetSize(self.data.previewWidth or 20, self.frameHeight)
+	ApplySingleAnchor(button, self.data.previewButtonAnchor or DEFAULT_PREVIEW_POINT, self)
 	button:SetMotionScriptsWhileDisabled(true)
 
 	local icon = button:CreateTexture(nil, "ARTWORK")
 	icon:SetAllPoints()
-	icon:SetTexture(self.data and self.data.previewIconTexture or "Interface\\Common\\VoiceChat-Speaker")
+	if self.data.previewIconAtlas then
+		icon:SetAtlas(self.data.previewIconAtlas)
+	else
+		icon:SetTexture(self.data.previewIconTexture or "Interface\\Common\\VoiceChat-Speaker")
+	end
 	icon:SetVertexColor(0.8, 0.8, 0.8)
 
 	button.Icon = icon
 	button:SetScript("OnEnter", function(control)
-		if not control:IsEnabled() then
-			return
-		end
+		if not control:IsEnabled() then return end
 		icon:SetVertexColor(1, 1, 1)
-		if GameTooltip then
-			GameTooltip:SetOwner(control, "ANCHOR_TOP")
-			GameTooltip:SetText(self.previewTooltip)
-			GameTooltip:Show()
-		end
+		GameTooltip:SetOwner(control, "ANCHOR_TOP")
+		GameTooltip:SetText(self.previewTooltip)
+		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", function()
 		icon:SetVertexColor(0.8, 0.8, 0.8)
-		if GameTooltip then
-			GameTooltip:Hide()
-		end
+		GameTooltip:Hide()
 	end)
 	button:SetScript("OnClick", function()
-		self:PreviewCurrentSound()
+		self:PreviewSound()
 	end)
 
 	self.previewButton = button
 end
 
-function LibEQOL_SoundDropdownMixin:PreviewCurrentSound()
-	local setting = self:GetSetting()
-	local value = setting and setting:GetValue()
-	if self.previewSoundFunc then
-		local ok = pcall(self.previewSoundFunc, value)
-		if ok then
-			return
-		end
+
+function LibEQOL_SoundDropdownMixin:SetupDropdown()
+	if self.soundDropdown then return end
+
+	local dropdown = CreateFrame("DropdownButton", nil, self, self.data.dropdownTemplate or "WowStyle1DropdownTemplate")
+	if self.data.dropdownAnchors then
+		ApplyAnchors(dropdown, self.data.dropdownAnchors, self.previewButton)
+	else
+		dropdown:SetPoint("LEFT", self.previewButton, "RIGHT", 5, 0)
+		dropdown:SetPoint("RIGHT", self, "RIGHT", -20, 0)
 	end
-	local sound = value
-	if self.soundResolver then
-		local ok, resolved = pcall(self.soundResolver, value)
-		if ok and resolved then
-			sound = resolved
-		end
-	end
-	local channel = self.getPlaybackChannel and self.getPlaybackChannel(value) or self.playbackChannel
-	if tonumber(sound) then
-		PlaySound(tonumber(sound), channel)
-	elseif type(sound) == "string" and sound ~= "" then
-		if LSM then
-			local mediaPath = LSM:Fetch("sound", sound, true)
-			if mediaPath then
-				PlaySoundFile(mediaPath, channel)
-				return
-			end
-		end
-		PlaySoundFile(sound, channel)
+	dropdown:SetHeight(self.frameHeight)
+
+	dropdown:SetupMenu(function(_, rootDescription)
+		rootDescription:SetScrollMode(self.menuHeight)
+		self:BuildDropdownMenu(rootDescription)
+	end)
+
+	self.soundDropdown = dropdown
+end
+
+function LibEQOL_SoundDropdownMixin:BuildDropdownMenu(rootDescription)
+	local entries = self:GetSoundEntries()
+	for _, entry in ipairs(entries) do
+		local value = entry.value
+		local label = entry.label or value or "?"
+		rootDescription:CreateRadio(label, function() return self:IsValueSelected(value) end, function()
+			self:SetCurrentValue(value)
+			self:UpdateDropdownText()
+			if self.callback then self.callback(value, entry) end
+		end, entry)
 	end
 end
 
-function LibEQOL_SoundDropdownMixin:SetupDropdown()
-	if not self.Dropdown then
-		return
-	end
-	local function buildOptions()
-		local list = self.options
-		if self.optionfunc then
-			local ok, result = pcall(self.optionfunc)
-			if ok and type(result) == "table" then
-				list = result
-			end
-		end
-		local normalized = normalizeOptions(list)
-		local container = Settings.CreateControlTextContainer()
-		container:Add(0, self.placeholderText)
-		for _, opt in ipairs(normalized) do
-			if opt.value ~= nil then
-				container:Add(opt.value, opt.label or tostring(opt.value))
-			end
-		end
-		return container:GetData()
+function LibEQOL_SoundDropdownMixin:GetSoundEntries()
+	local list
+	if self.optionfunc then
+		list = self.optionfunc()
+	elseif self.options then
+		list = self.options
 	end
 
-	self.Dropdown:SetupMenu(function(_, rootDescription)
-		rootDescription:SetTag("LIBEQOL_SOUND_VERSION", self.optionsChangedVersion)
-		rootDescription:SetScrollMode(self.menuHeight)
-		for _, entry in ipairs(buildOptions()) do
-			local value, text = entry.value, entry.text
-			rootDescription:CreateRadio(text, function()
-				local setting = self:GetSetting()
-				return setting and setting:GetValue() == value
-			end, function()
-				local setting = self:GetSetting()
-				if setting then
-					setting:SetValue(value)
-					self:UpdateDropdownText()
-					if self.callback then
-						pcall(self.callback, value)
-					end
-				end
-			end)
+	if list then return NormalizeOptions(list) end
+
+	local entries = {}
+	if LSM then
+		local sounds = LSM:List("sound") or {}
+		for _, name in ipairs(sounds) do
+			entries[#entries + 1] = { value = name, label = name }
 		end
-	end)
+	end
+
+	table.sort(entries, function(a, b) return tostring(a.label or a.value or "") < tostring(b.label or b.value or "") end)
+	return entries
+end
+
+function LibEQOL_SoundDropdownMixin:IsValueSelected(value)
+	return self:GetCurrentValue() == value
+end
+
+
+local function GetInitializerData(self)
+	return self.data or (self.initializer and self.initializer.data) or {}
+end
+
+function LibEQOL_SoundDropdownMixin:GetCurrentValue()
+	local data = GetInitializerData(self)
+	if data.getValue then return data.getValue() end
+	local setting = self:GetSetting()
+	if setting then return setting:GetValue() end
+	return nil
+end
+
+function LibEQOL_SoundDropdownMixin:SetCurrentValue(value)
+	local data = GetInitializerData(self)
+	if data.setValue then
+		data.setValue(value)
+	else
+		local setting = self:GetSetting()
+		if setting then setting:SetValue(value or "") end
+	end
+end
+
+function LibEQOL_SoundDropdownMixin:GetLabelForValue(value)
+	if not value or value == "" then return nil end
+	for _, entry in ipairs(self:GetSoundEntries()) do
+		if entry.value == value then return entry.label or entry.value end
+	end
+	return value
+end
+
+function LibEQOL_SoundDropdownMixin:UpdateDropdownText()
+	if not self.soundDropdown then return end
+	local value = self:GetCurrentValue()
+	local label = self:GetLabelForValue(value)
+	self.soundDropdown:OverrideText(label or self.placeholderText)
+end
+
+function LibEQOL_SoundDropdownMixin:GetPlaybackChannel()
+	if type(self.getPlaybackChannel) == "function" then
+		local channel = self.getPlaybackChannel()
+		if channel and channel ~= "" then return channel end
+	end
+	if type(self.playbackChannel) == "string" and self.playbackChannel ~= "" then return self.playbackChannel end
+end
+
+function LibEQOL_SoundDropdownMixin:ResolveSoundFile(value)
+	if not value or value == "" then return end
+	if self.soundResolver then return self.soundResolver(value) end
+	if LSM then return LSM:Fetch("sound", value, true) end
+end
+
+function LibEQOL_SoundDropdownMixin:PreviewSound()
+	if type(self.previewSoundFunc) == "function" then
+		self.previewSoundFunc(self:GetCurrentValue(), self)
+		return
+	end
+	local soundFile = self:ResolveSoundFile(self:GetCurrentValue())
+	if not soundFile then return end
+
+	local channel = self:GetPlaybackChannel()
+	if channel then
+		PlaySoundFile(soundFile, channel)
+	else
+		PlaySoundFile(soundFile)
+	end
 end
 
 function LibEQOL_SoundDropdownMixin:RegisterSettingListener()
 	local setting = self:GetSetting()
-	if not setting or not setting.connectCallbacks then
-		return
-	end
-	self.cbrHandles:UnregisterAll()
-	self.cbrHandles:RegisterCallback(setting, function()
+	if not (setting and self.cbrHandles) then return end
+	local variable = setting:GetVariable()
+	if not variable then return end
+	self.cbrHandles:SetOnValueChangedCallback(variable, function()
 		self:UpdateDropdownText()
 	end)
 end
 
-function LibEQOL_SoundDropdownMixin:UpdateDropdownText()
-	local setting = self:GetSetting()
-	if not (setting and self.Dropdown) then
-		return
-	end
-	local current = setting:GetValue()
-	local label = self.placeholderText
-	for _, opt in ipairs(normalizeOptions(self.options or {})) do
-		if opt.value == current then
-			label = opt.label or tostring(opt.value)
-			break
+function LibEQOL_SoundDropdownMixin:EvaluateState()
+	SettingsListElementMixin.EvaluateState(self)
+	local enabled = true
+	if self.parentCheck then enabled = self.parentCheck() and true or false end
+
+	if self.previewButton then self.previewButton:SetEnabled(enabled) end
+	if self.soundDropdown then
+		if enabled then
+			self.soundDropdown:Enable()
+		else
+			self.soundDropdown:Disable()
 		end
 	end
-	if label and label ~= "" then
-		self.Dropdown:SetDefaultText(label)
-	end
+end
+
+function LibEQOL_SoundDropdownMixin:Release()
+	SafeUnregister(self.cbrHandles)
+	SettingsListElementMixin.Release(self)
 end
