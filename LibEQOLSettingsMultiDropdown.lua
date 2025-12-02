@@ -1,6 +1,9 @@
-local MODULE_MAJOR = "LibEQOLSettingsMode-1.0"
+local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 2
 local _, lib = pcall(LibStub, MODULE_MAJOR)
 if not lib then
+	return
+end
+if lib.MINOR and lib.MINOR > EXPECTED_MINOR then
 	return
 end
 

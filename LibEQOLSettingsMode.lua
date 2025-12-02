@@ -1,4 +1,4 @@
-local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 1
+local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 2
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -6,6 +6,7 @@ local lib = LibStub:NewLibrary(MODULE_MAJOR, MINOR)
 if not lib then
 	return
 end
+lib.MINOR = MINOR
 
 local Settings = _G.Settings
 local SettingsPanel = _G.SettingsPanel
