@@ -24,6 +24,29 @@ local State = {
 	elements = {},
 }
 
+local function attachNotify(setting, tag)
+	if not (setting and setting.SetValueChangedCallback) then
+		return
+	end
+
+	local notifyTag = tag or (setting.GetVariable and setting:GetVariable()) or setting.variable
+	if not notifyTag or notifyTag == "" then
+		return
+	end
+
+	setting:SetValueChangedCallback(function(_, value)
+		Settings.NotifyUpdate(notifyTag)
+	end)
+end
+
+local function maybeAttachNotify(setting, data)
+	if not (data and data.notify) then
+		return
+	end
+	local notifyTag = (data.notify == true) and ((setting and setting.GetVariable and setting:GetVariable()) or (setting and setting.variable)) or data.notify
+	attachNotify(setting, notifyTag)
+end
+
 local function shouldShowNewTag(category)
 	if not (State.newTagResolver and category) then
 		return false
@@ -144,6 +167,7 @@ function lib:CreateCheckbox(cat, data)
 	applyParentInitializer(element, data.parent, data.parentCheck)
 	addSearchTags(element, data.searchtags, data.name or data.text)
 	State.elements[data.key] = element
+	maybeAttachNotify(setting, data)
 	return element, setting
 end
 
@@ -166,6 +190,7 @@ function lib:CreateSlider(cat, data)
 	applyParentInitializer(element, data.parent, data.parentCheck)
 	addSearchTags(element, data.searchtags, data.name or data.text)
 	State.elements[data.key] = element
+	maybeAttachNotify(setting, data)
 	return element, setting
 end
 
@@ -211,6 +236,7 @@ function lib:CreateDropdown(cat, data)
 	applyParentInitializer(dropdown, data.parent, data.parentCheck)
 	addSearchTags(dropdown, data.searchtags, data.name or data.text)
 	State.elements[data.key] = dropdown
+	maybeAttachNotify(setting, data)
 	return dropdown, setting
 end
 
@@ -247,6 +273,7 @@ function lib:CreateSoundDropdown(cat, data)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
 	Settings.RegisterInitializer(cat, initializer)
 	State.elements[data.key] = initializer
+	maybeAttachNotify(setting, data)
 	return initializer, setting
 end
 
@@ -264,6 +291,7 @@ function lib:CreateColorOverrides(cat, data)
 	Settings.RegisterInitializer(cat, initializer)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
 	State.elements[data.key or (data.name or "ColorOverrides")] = initializer
+	maybeAttachNotify(initializer.GetSetting and initializer:GetSetting(), data)
 	return initializer
 end
 
@@ -293,6 +321,7 @@ function lib:CreateMultiDropdown(cat, data)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
 	Settings.RegisterInitializer(cat, initializer)
 	State.elements[data.key] = initializer
+	maybeAttachNotify(setting, data)
 	return initializer, setting
 end
 
@@ -341,4 +370,8 @@ function lib:SetVariablePrefix(prefix)
 	if type(prefix) == "string" and prefix ~= "" then
 		State.prefix = prefix
 	end
+end
+
+function lib:AttachNotify(target, tag)
+	attachNotify(target, tag)
 end
