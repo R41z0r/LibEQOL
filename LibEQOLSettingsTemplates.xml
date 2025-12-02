@@ -1,56 +1,53 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-	<Frame name="LibEQOL_SettingsListSectionHintTemplate" virtual="true" mixin="SettingsListSectionHeaderMixin">
-		<Size x="30" y="29" />
-		<Layers>
-			<Layer level="OVERLAY">
-				<FontString parentKey="Title" inherits="GameFontHighlightSmall" justifyH="LEFT" justifyV="TOP">
-					<Anchors>
-						<Anchor point="TOPLEFT" x="35" y="0" />
-					</Anchors>
-				</FontString>
-			</Layer>
-		</Layers>
-		<Frames>
-			<Frame parentKey="NewFeature" inherits="NewFeatureLabelTemplate" frameStrata="HIGH" scale=".8" frameLevel="100" hidden="true">
-				<Size x="1" y="1" />
-				<Anchors>
-					<Anchor point="BOTTOMRIGHT" x="16" y="-10" relativeKey="$parent.Title" relativePoint="LEFT" />
-				</Anchors>
-			</Frame>
-		</Frames>
-		<Scripts>
-			<OnLoad method="OnLoad" />
-		</Scripts>
-	</Frame>
+    <Frame name="LibEQOL_SettingsListSectionHintTemplate" mixin="SettingsListSectionHeaderMixin" virtual="true">
+        <Size x="30" y="29"/>
+        <Layers>
+        <Layer level="OVERLAY">
+            <FontString parentKey="Title" inherits="GameFontHighlightSmall" justifyH="LEFT" justifyV="TOP">
+            <Anchors>
+                <Anchor point="TOPLEFT" x="35" y="0"/>
+            </Anchors>
+            </FontString>
+        </Layer>
+        </Layers>
+        <Frames>
+            <Frame parentKey="NewFeature" inherits="NewFeatureLabelTemplate" frameStrata="HIGH" scale=".8" frameLevel="100" hidden="true">
+                <Size x="1" y="1"/>
+                <Anchors>
+                <Anchor point="BOTTOMRIGHT" x="16" y="-10" relativeKey="$parent.Title" relativePoint="LEFT"/>
+                </Anchors>
+            </Frame>
+        </Frames>
+        <Scripts>
+        <OnLoad method="OnLoad"/>
+        </Scripts>
+    </Frame>
 
-	<Button name="LibEQOL_MultiDropdownTemplate" virtual="true" inherits="SettingsDropdownControlTemplate" mixin="LibEQOL_MultiDropdownMixin">
-		<Layers>
-			<Layer level="ARTWORK">
-				<FontString parentKey="Summary" inherits="GameFontHighlightSmall" justifyH="LEFT" maxLines="1">
-					<Anchors>
-						<Anchor point="TOPLEFT" relativeKey="$parent.Text" relativePoint="BOTTOMLEFT" x="0" y="-2" />
-						<Anchor point="RIGHT" x="-4" y="0" />
-					</Anchors>
-				</FontString>
-			</Layer>
-		</Layers>
-	</Button>
+     <Button name="LibEQOL_MultiDropdownTemplate"
+        virtual="true"
+        inherits="SettingsDropdownControlTemplate"
+        mixin="LibEQOL_MultiDropdownMixin">
+        <Layers>
+            <Layer level="ARTWORK">
+                <!-- Kleiner Summary-Text unterhalb vom Label -->
+                <FontString parentKey="Summary" inherits="GameFontHighlightSmall" justifyH="LEFT" maxLines="1">
+                    <Anchors>
+                        <Anchor point="TOPLEFT" relativeKey="$parent.Text" relativePoint="BOTTOMLEFT" x="0" y="-2"/>
+                        <Anchor point="RIGHT" x="-4" y="0"/>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+    </Button>
 
-	<Button name="LibEQOL_SoundDropdownTemplate" virtual="true" inherits="SettingsListElementTemplate" mixin="LibEQOL_SoundDropdownMixin">
-		<Size x="200" y="25" />
-		<Scripts>
-			<OnLoad method="OnLoad" />
-		</Scripts>
-	</Button>
-
-	<Frame name="LibEQOL_ColorOverridesPanel" virtual="true" inherits="SettingsListElementTemplate" mixin="LibEQOL_ColorOverridesMixin">
-		<Size x="200" y="60" />
+    <Frame name="LibEQOL_ColorOverridesPanel" mixin="LibEQOL_ColorOverridesMixin" virtual="true">
+		<Size x="200" y="60"/>
 		<Layers>
 			<Layer level="ARTWORK">
 				<FontString parentKey="Header" inherits="GameFontNormal" justifyH="LEFT">
-					<Size x="0" y="20" />
+					<Size x="0" y="20"/>
 					<Anchors>
-						<Anchor point="TOPLEFT" x="37" y="0" />
+						<Anchor point="TOPLEFT" x="37" y="0"/>
 					</Anchors>
 				</FontString>
 			</Layer>
@@ -58,10 +55,10 @@
 		<Frames>
 			<Frame parentKey="List" inherits="VerticalLayoutFrame">
 				<Anchors>
-					<Anchor point="TOPLEFT" relativeKey="$parent.Header" relativePoint="BOTTOMLEFT" x="15" y="-10" />
+					<Anchor point="TOPLEFT" relativeKey="$parent.Header" relativePoint="BOTTOMLEFT" x="15" y="-10"/>
 				</Anchors>
 				<KeyValues>
-					<KeyValue key="spacing" value="10" type="number" />
+					<KeyValue key="spacing" value="10" type="number"/>
 				</KeyValues>
 			</Frame>
 			<Frame parentKey="NewFeature" inherits="NewFeatureLabelTemplate" scale="0.8">
@@ -71,19 +68,33 @@
 			</Frame>
 		</Frames>
 		<Scripts>
-			<OnLoad method="OnLoad" />
+			<OnLoad method="OnLoad"/>
 		</Scripts>
 	</Frame>
 
-	<Frame name="LibEQOL_ColorOverridesPanelNoHead" virtual="true" inherits="SettingsListElementTemplate" mixin="LibEQOL_ColorOverridesMixin">
-		<Size x="200" y="25" />
+	<Frame name="LibEQOL_ColorOverridesPanelNoHead" 
+		mixin="LibEQOL_ColorOverridesMixin" 
+		inherits="SettingsListElementTemplate"
+		virtual="true"
+	>		
+	<Size x="200" y="25"/>
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString parentKey="Header" inherits="GameFontNormal" justifyH="LEFT">
+					<Size x="0" y="0"/>
+					<Anchors>
+						<Anchor point="TOPLEFT" x="37" y="0"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
 		<Frames>
 			<Frame parentKey="List" inherits="VerticalLayoutFrame">
 				<Anchors>
-					<Anchor point="TOPLEFT" x="0" y="0" />
+					<Anchor point="TOPLEFT" relativeKey="$parent.Header" relativePoint="BOTTOMLEFT" x="15" y="0"/>
 				</Anchors>
 				<KeyValues>
-					<KeyValue key="spacing" value="10" type="number" />
+					<KeyValue key="spacing" value="10" type="number"/>
 				</KeyValues>
 			</Frame>
 			<Frame parentKey="NewFeature" inherits="NewFeatureLabelTemplate" scale="0.8">
@@ -93,7 +104,18 @@
 			</Frame>
 		</Frames>
 		<Scripts>
-			<OnLoad method="OnLoad" />
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
+
+	<Frame name="LibEQOL_SoundDropdownTemplate"
+		inherits="SettingsListElementTemplate"
+		mixin="LibEQOL_SoundDropdownMixin"
+		virtual="true"
+	>
+	<Size x="200" y="25"/>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
 		</Scripts>
 	</Frame>
 </Ui>

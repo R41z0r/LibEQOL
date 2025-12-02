@@ -21,7 +21,7 @@ end
 
 function LibEQOL_ColorOverridesMixin:OnLoad()
 	SettingsListElementMixin.OnLoad(self)
-	self.container = self.List or self
+	self.container = self.ItemQualities or self.List or self
 	self.ColorOverrideFramePool = CreateFramePool("FRAME", self.container, "ColorOverrideTemplate")
 	self.colorOverrideFrames = {}
 end

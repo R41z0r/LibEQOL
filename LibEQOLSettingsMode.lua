@@ -260,9 +260,9 @@ function lib:CreateColorOverrides(cat, data)
 		getDefaultColor = data.getDefaultColor,
 		parentCheck = data.parentCheck,
 	})
-	addSearchTags(initializer, data.searchtags, data.name or data.text)
-	applyParentInitializer(initializer, data.parent, data.parentCheck)
+	-- addSearchTags(initializer, data.searchtags, data.name or data.text)
 	Settings.RegisterInitializer(cat, initializer)
+	applyParentInitializer(initializer, data.parent, data.parentCheck)
 	State.elements[data.key or (data.name or "ColorOverrides")] = initializer
 	return initializer
 end
