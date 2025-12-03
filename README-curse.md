@@ -1,17 +1,27 @@
 # LibEQOL
 
-Lightweight Edit Mode helper sublib `LibEQOLEditMode-1.0` for Blizzard Edit Mode. Provides selection overlays, ready-made setting widgets (checkbox/dropdown/multi-dropdown/slider/color, incl. checkbox+color and dropdown+color), keyboard nudging, reset-to-default, and callbacks for enter/exit/layout. `LibEQOL-1.0` stays as an alias for existing users.
+Quality-of-life toolkit for WoW addons. Ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (selection overlays, dialogs, widgets) and the Settings helper sublib `LibEQOLSettingsMode-1.0` (helpers for the Blizzard Settings UI).
 
-Docs: https://github.com/R41z0r/LibEQOLWiki/wiki
+## What you get
+
+- Edit Mode: selection overlay that plugs into Blizzard highlight, move handles, keyboard nudging (Shift for larger steps), per-frame reset and optional overlay toggle eye-button, overlap chooser when frames stack, callbacks for enter/exit/layout/spec, and an auto-built settings panel (checkbox, dropdown, multi dropdown, slider, color, checkbox+color, dropdown+color) with pooled widgets.
+- Settings Mode: helper layer for Blizzard Settings, powered by the same widget factory (checkbox/dropdown/multi dropdown/slider/color/sound); requires a unique `SetVariablePrefix` per addon to avoid collisions; supports per-control prefixes/variables, notify hooks, and "New" badges with auto-prefixed IDs.
+
+## Requirements
+
+- Retail WoW 10.0+ (uses Edit Mode APIs)
+- LibStub (bundled by most addon frameworks)
 
 ## Install / embed
+
 - Standalone: drop `LibEQOL` into `Interface/AddOns` and enable it (loads automatically).
-- Embedded: include `LibEQOL.xml` from your `libs/` folder:
+- Embedded: place it under `libs/` and include `LibEQOL.xml`:
   ```
   <Include file="libs/LibEQOL/LibEQOL.xml" />
   ```
 
-## Quick start
+## Quick start (Edit Mode)
+
 ```lua
 local EditMode = LibStub("LibEQOLEditMode-1.0")
 
@@ -31,8 +41,34 @@ EditMode:AddFrameSettings(MyFrame, {
 })
 ```
 
-## Notes
-- `AddFrame` callback signature: `callback(frame, layoutName, point, x, y)`; positions are relative to `UIParent` and `relativePoint` equals `point`. `defaultPosition` can include `relativePoint` (handled the same as `point`).
-- Reset button: sets settings back to their `default` (and `colorDefault` where applicable); settings without defaults are skipped.
-- Any row can take `tooltip = "..."` to show a GameTooltip on hover.
-- Umbrella entry (`LibEQOL.lua`) exposes sublibs on `_G.LibEQOL`; `EditMode` is present by default and future modules (e.g. settings) will sit alongside it.
+## Quick start (Settings Mode)
+
+```lua
+local SettingsLib = LibStub("LibEQOLSettingsMode-1.0")
+SettingsLib:SetVariablePrefix("MyAddon_") -- required, unique per addon
+
+local root = SettingsLib:CreateRootCategory("My AddOn")
+SettingsLib:CreateCheckbox(root, {
+    key = "ShowTitle",
+    name = "Show title",
+    default = true,
+    get = function() return MyDB.showTitle end,
+    set = function(value) MyDB.showTitle = value end,
+    desc = "Toggle the title text on your frame.",
+})
+SettingsLib:CreateSlider(root, {
+    key = "Scale",
+    name = "Scale",
+    min = 0.5, max = 2, step = 0.05,
+    default = 1,
+    get = function() return MyDB.scale end,
+    set = function(value) MyDB.scale = value end,
+    formatter = function(value) return string.format("%.2fx", value) end,
+})
+```
+
+## Tips
+
+- `SetFrameDragEnabled`/`dragEnabled` let you allow/deny dragging; `enableOverlayToggle` opts into per-frame eye buttons; the overlap chooser appears when multiple registered frames sit under the cursor.
+- Call `lib.internal:RefreshSettings()` after you change data that controls `isEnabled`/`disabled` logic on visible rows.
+- Keep `LibStub` loading before `LibEQOL.lua`, and list `LibEQOL` in `OptionalDeps` if you load on demand.
