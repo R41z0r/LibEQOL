@@ -1589,15 +1589,18 @@ local function buildSlider()
 
 	function mixin:OnSliderValueChanged(value)
 		if not self.initInProgress then
-			self.setting.set(lib.activeLayoutName, value, lib:GetActiveLayoutIndex())
-			self.currentValue = value
-			if self.Input and self.Input:IsShown() then
-				self.Input:SetText(tostring(value))
-				if self.Slider.RightText then
-					self.Slider.RightText:Hide()
+			-- Avoid redundant setter calls on identical values (helps rapid slider drags).
+			if value ~= self.currentValue then
+				self.setting.set(lib.activeLayoutName, value, lib:GetActiveLayoutIndex())
+				self.currentValue = value
+				if self.Input and self.Input:IsShown() then
+					self.Input:SetText(tostring(value))
+					if self.Slider.RightText then
+						self.Slider.RightText:Hide()
+					end
 				end
+				Internal:RefreshSettings()
 			end
-			Internal:RefreshSettings()
 		end
 	end
 

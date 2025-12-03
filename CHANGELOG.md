@@ -18,6 +18,7 @@
 
 - Layout delete flow now caches removed layout names even when multiple `EDIT_MODE_LAYOUTS_UPDATED` events fire before the delete callback, preventing missing/empty names.
 - Protected `SetPropagateKeyboardInput` now only runs when Edit Mode is open and not in combat, avoiding `ADDON_ACTION_BLOCKED` during login/combat and preventing key capture outside Edit Mode.
+- Slider `set` handlers no longer fire when the value is unchanged, reducing redundant updates on drags.
 
 ## [2] – 2025-12-02
 
