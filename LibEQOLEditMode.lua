@@ -40,6 +40,7 @@ local State = {
 	settingSheets = lib.settingSheets or {},
 	buttonSpecs = lib.buttonSpecs or {},
 	resetToggles = lib.resetToggles or {},
+	settingsResetToggles = lib.settingsResetToggles or {},
 	collapseFlags = lib.collapseFlags or {},
 	collapseExclusiveFlags = lib.collapseExclusiveFlags or {},
 	widgetPools = lib.widgetPools or {},
@@ -54,6 +55,7 @@ lib.defaultPositions = State.defaultPositions
 lib.settingSheets = State.settingSheets
 lib.buttonSpecs = State.buttonSpecs
 lib.resetToggles = State.resetToggles
+lib.settingsResetToggles = State.settingsResetToggles
 lib.collapseFlags = State.collapseFlags
 lib.collapseExclusiveFlags = State.collapseExclusiveFlags
 lib.widgetPools = State.widgetPools
@@ -75,6 +77,8 @@ local GameTooltip = _G.GameTooltip
 local GameTooltip_Hide = _G.GameTooltip_Hide
 local ColorPickerFrame = _G.ColorPickerFrame
 local SOUNDKIT = _G.SOUNDKIT
+local GetCursorPosition = _G.GetCursorPosition
+local GetMouseFoci = _G.GetMouseFoci or _G.GetMouseFocus
 local Enum = _G.Enum
 local EditModeManagerFrame = _G.EditModeManagerFrame
 local GenerateClosure = _G.GenerateClosure
@@ -661,6 +665,16 @@ local function buildDropdown()
 		self.Label:SetText(data.name)
 		self.ignoreInLayout = nil
 
+		if data.useOldStyle and self.OldDropdown then
+			self.Control:Hide()
+			self.OldDropdown:Show()
+			self.Dropdown = self.OldDropdown
+		else
+			if self.OldDropdown then self.OldDropdown:Hide() end
+			self.Control:Show()
+			self.Dropdown = self.Control.Dropdown
+		end
+
 		if data.generator then
 			self.Dropdown:SetupMenu(function(owner, rootDescription)
 				pcall(data.generator, owner, rootDescription, data)
@@ -709,18 +723,21 @@ local function buildDropdown()
 
 		local control = CreateFrame("Frame", nil, frame, "SettingsDropdownWithButtonsTemplate")
 		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		frame.Control = control
 
-		if control.DecrementButton then
-			control.DecrementButton:Hide()
-		end
-		if control.IncrementButton then
-			control.IncrementButton:Hide()
-		end
+		if control.DecrementButton then control.DecrementButton:Hide() end
+		if control.IncrementButton then control.IncrementButton:Hide() end
 
 		local dropdown = control.Dropdown
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
+
+		local oldDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		oldDropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		oldDropdown:SetSize(200, 30)
+		oldDropdown:Hide()
+		frame.OldDropdown = oldDropdown
 
 		return frame
 	end, function(_, frame)
@@ -741,6 +758,21 @@ local function buildMultiDropdown()
 
 		self.Label:SetText(data.name)
 		self.Dropdown:SetDefaultText(CUSTOM)
+
+		if data.useOldStyle and self.OldDropdown then
+			self.Control:Hide()
+			self.OldDropdown:Show()
+			self.Dropdown = self.OldDropdown
+		else
+			if self.OldDropdown then self.OldDropdown:Hide() end
+			self.Control:Show()
+			self.Dropdown = self.Control.Dropdown
+		end
+		if self.Summary then
+			self.Summary:ClearAllPoints()
+			self.Summary:SetPoint("TOPLEFT", self.Dropdown, "BOTTOMLEFT", 0, -2)
+			self.Summary:SetPoint("TOPRIGHT", self.Dropdown, "BOTTOMRIGHT", 0, -2)
+		end
 
 		local targetHeight = self.hideSummary and 32 or 48
 		self.fixedHeight = targetHeight
@@ -940,6 +972,7 @@ local function buildMultiDropdown()
 
 		local control = CreateFrame("Frame", nil, frame, "SettingsDropdownWithButtonsTemplate")
 		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		frame.Control = control
 
 		if control.DecrementButton then
 			control.DecrementButton:Hide()
@@ -952,6 +985,12 @@ local function buildMultiDropdown()
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
+
+		local oldDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		oldDropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		oldDropdown:SetSize(200, 30)
+		oldDropdown:Hide()
+		frame.OldDropdown = oldDropdown
 
 		local summary = frame:CreateFontString(nil, nil, "GameFontHighlightSmall")
 		summary:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
@@ -1244,6 +1283,24 @@ local function buildDropdownColor()
 		self.Label:SetText(data.name)
 		self.ignoreInLayout = nil
 
+		if data.useOldStyle then
+			if self.OldDropdown then
+				self.Control:Hide()
+				self.OldDropdown:Show()
+				self.Dropdown = self.OldDropdown
+				self.Button:ClearAllPoints()
+				self.Button:SetPoint("LEFT", self.Dropdown, "RIGHT", 6, 0)
+			end
+		else
+			if self.OldDropdown then
+				self.OldDropdown:Hide()
+			end
+			self.Control:Show()
+			self.Dropdown = self.Control.Dropdown
+			self.Button:ClearAllPoints()
+			self.Button:SetPoint("LEFT", self.Dropdown, "RIGHT", 6, 0)
+		end
+
 		local function createEntries(rootDescription)
 			if data.height then
 				rootDescription:SetScrollMode(data.height)
@@ -1367,8 +1424,10 @@ local function buildDropdownColor()
 		label:SetJustifyH("LEFT")
 		frame.Label = label
 
+		-- modern control
 		local control = CreateFrame("Frame", nil, frame, "SettingsDropdownWithButtonsTemplate")
 		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		frame.Control = control
 
 		if control.DecrementButton then
 			control.DecrementButton:Hide()
@@ -1381,6 +1440,13 @@ local function buildDropdownColor()
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
+
+		-- old style control (hidden by default)
+		local oldDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		oldDropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		oldDropdown:SetSize(200, 30)
+		oldDropdown:Hide()
+		frame.OldDropdown = oldDropdown
 
 		local button = CreateFrame("Button", nil, frame)
 		button:SetSize(36, 22)
@@ -1868,7 +1934,12 @@ function Dialog:UpdateSettings()
 
 	self.Settings.ResetButton.layoutIndex = num + 1
 	self.Settings.Divider.layoutIndex = num + 2
+	local showSettingsReset = State.settingsResetToggles[self.selection.parent]
+	if showSettingsReset == nil then
+		showSettingsReset = true
+	end
 	self.Settings.ResetButton:SetEnabled(num > 0)
+	self.Settings.ResetButton:SetShown(showSettingsReset)
 	if self.Settings and self.Settings.Layout then
 		self.Settings:Layout()
 	end
@@ -2164,10 +2235,17 @@ local function resetSelectionIndicators()
 	end
 end
 
+local function hideOverlapMenu()
+	if Internal.overlapMenu then
+		Internal.overlapMenu:Hide()
+	end
+end
+
 local function beginSelectionDrag(self)
 	if isInCombat() then
 		return
 	end
+	hideOverlapMenu()
 	if not isDragAllowed(self.parent) then
 		return
 	end
@@ -2192,23 +2270,183 @@ local function finishSelectionDrag(self)
 	Internal:TriggerCallback(parent, point, x, y)
 end
 
-local function handleSelectionMouseDown(self)
-	if isInCombat() then
+-- Overlap chooser ---------------------------------------------------------------
+local function getCursorPositionUI()
+	local x, y = GetCursorPosition()
+	local scale = UIParent:GetEffectiveScale() or 1
+	return x / scale, y / scale
+end
+
+local function getSelectionLabel(selection)
+	if not selection then
+		return "Frame"
+	end
+	if selection.systemBaseName and selection.systemBaseName ~= "" then
+		return selection.systemBaseName
+	end
+	if selection.Label and selection.Label.GetText then
+		local txt = selection.Label:GetText()
+		if txt and txt ~= "" then
+			return txt
+		end
+	end
+	local parent = selection.parent
+	if parent then
+		return parent.editModeName or parent:GetName() or "Frame"
+	end
+	return "Frame"
+end
+
+local function selectionContainsCursor(selection, cx, cy)
+	if not selection or not selection:IsVisible() then
+		return false
+	end
+	local frame = selection.parent or selection
+	if not (frame and frame:IsVisible()) then
+		return false
+	end
+	local left, right, top, bottom = frame:GetLeft(), frame:GetRight(), frame:GetTop(), frame:GetBottom()
+	if not left or not right or not top or not bottom then
+		return false
+	end
+	return cx >= left and cx <= right and cy >= bottom and cy <= top
+end
+
+local function collectOverlappingSelections(cx, cy)
+	local hits = {}
+	for _, selection in pairs(State.selectionRegistry) do
+		if selectionContainsCursor(selection, cx, cy) then
+			table.insert(hits, selection)
+		end
+	end
+	return hits
+end
+
+local function ensureOverlapMenu()
+	if Internal.overlapMenu then
+		return Internal.overlapMenu
+	end
+	local menu = CreateFrame("Frame", nil, UIParent, "TooltipBackdropTemplate")
+	menu:SetFrameStrata("TOOLTIP")
+	menu:EnableMouse(true)
+	menu:SetPropagateMouseClicks(true)
+	menu.buttons = {}
+	menu.buttonHeight = 22
+	menu.buttonSpacing = 4
+	menu:SetScript("OnHide", function(self)
+		for _, btn in ipairs(self.buttons) do
+			btn:Hide()
+			btn.selection = nil
+		end
+	end)
+	Internal.overlapMenu = menu
+	return menu
+end
+
+local function selectSelection(selection)
+	if isInCombat() or not selection then
 		return
 	end
 	resetSelectionIndicators()
 	if EditModeManagerFrame and EditModeManagerFrame.ClearSelectedSystem then
 		EditModeManagerFrame:ClearSelectedSystem()
 	end
-	if not self.isSelected then
-		self.parent:SetMovable(true)
-		self:ShowSelected(true)
-		self.isSelected = true
+	if not selection.isSelected then
+		selection.parent:SetMovable(true)
+		selection:ShowSelected(true)
+		selection.isSelected = true
 		if Internal.dialog then
-			Internal.dialog:Update(self)
+			Internal.dialog:Update(selection)
 		end
 	end
 end
+
+local function showOverlapMenu(hits, cursorX, cursorY, primary)
+	if #hits <= 1 then
+		hideOverlapMenu()
+		return
+	end
+	local menu = ensureOverlapMenu()
+	local buttons = menu.buttons
+	local maxWidth = 0
+	local yOffset = -8
+	table.sort(hits, function(a, b)
+		if a == primary then
+			return true
+		end
+		if b == primary then
+			return false
+		end
+		return getSelectionLabel(a) < getSelectionLabel(b)
+	end)
+	for index, selection in ipairs(hits) do
+		local btn = buttons[index]
+		if not btn then
+			btn = CreateFrame("Button", nil, menu, "UIPanelButtonTemplate")
+			buttons[index] = btn
+		end
+		local label = getSelectionLabel(selection)
+		btn.selection = selection
+		btn:SetText(label)
+		btn:SetWidth(math.max(140, btn:GetTextWidth() + 24))
+		btn:SetHeight(menu.buttonHeight)
+		btn:ClearAllPoints()
+		btn:SetPoint("TOPLEFT", 8, yOffset)
+		yOffset = yOffset - (menu.buttonHeight + menu.buttonSpacing)
+		btn:SetScript("OnClick", function()
+			hideOverlapMenu()
+			selectSelection(selection)
+		end)
+		btn:Show()
+		if btn:GetWidth() > maxWidth then
+			maxWidth = btn:GetWidth()
+		end
+	end
+	for i = #hits + 1, #buttons do
+		buttons[i]:Hide()
+		buttons[i].selection = nil
+	end
+	local totalHeight = 16 + #hits * menu.buttonHeight + (#hits - 1) * menu.buttonSpacing
+	menu:SetSize(maxWidth + 16, totalHeight)
+	menu:ClearAllPoints()
+	menu:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", cursorX, cursorY)
+	menu:Show()
+end
+
+local function handleSelectionMouseDown(self)
+	if isInCombat() then
+		return
+	end
+	hideOverlapMenu()
+	local cx, cy = getCursorPositionUI()
+	local hits = collectOverlappingSelections(cx, cy)
+	if #hits > 1 then
+		selectSelection(self)
+		showOverlapMenu(hits, cx, cy, self)
+		return
+	end
+	selectSelection(self)
+end
+
+-- hide overlap menu when clicking elsewhere (non-blocking)
+local function overlapGlobalMouseDown()
+	local menu = Internal.overlapMenu
+	if not (lib.isEditing and menu and menu:IsShown()) then
+		return
+	end
+	if MouseIsOver and MouseIsOver(menu, 4, 4, 4, 4) then
+		return
+	end
+	local focus = GetMouseFoci and GetMouseFoci() or GetMouseFocus()
+	if focus and (focus == menu or (focus.IsDescendantOf and focus:IsDescendantOf(menu))) then
+		return
+	end
+	hideOverlapMenu()
+end
+
+local overlapGlobalFrame = CreateFrame("Frame")
+overlapGlobalFrame:RegisterEvent("GLOBAL_MOUSE_DOWN")
+overlapGlobalFrame:SetScript("OnEvent", overlapGlobalMouseDown)
 
 local function onEditModeEnter()
 	updateActiveLayoutFromAPI()
@@ -2222,6 +2460,7 @@ end
 local function onEditModeExit()
 	lib.isEditing = false
 	resetSelectionIndicators()
+	hideOverlapMenu()
 	for _, callback in next, lib.eventHandlersExit do
 		securecallfunction(callback)
 	end
@@ -2334,6 +2573,12 @@ function lib:AddFrame(frame, callback, default)
 			State.collapseExclusiveFlags[frame] = (default.collapseExclusive ~= nil) and default.collapseExclusive
 				or default.exclusiveCollapse
 		end
+		if default.showReset ~= nil then
+			State.resetToggles[frame] = not not default.showReset
+		end
+		if default.showSettingsReset ~= nil then
+			State.settingsResetToggles[frame] = not not default.showSettingsReset
+		end
 	end
 
 	if not Internal.dialog then
@@ -2407,6 +2652,16 @@ end
 
 function lib:SetFrameResetVisible(frame, showReset)
 	State.resetToggles[frame] = not not showReset
+	if Internal.dialog and Internal.dialog.selection and Internal.dialog.selection.parent == frame then
+		Internal.dialog:UpdateButtons()
+	end
+end
+
+function lib:SetFrameSettingsResetVisible(frame, showReset)
+	State.settingsResetToggles[frame] = not not showReset
+	if Internal.dialog and Internal.dialog.selection and Internal.dialog.selection.parent == frame then
+		Internal.dialog:UpdateSettings()
+	end
 end
 
 function lib:SetFrameDragEnabled(frame, enabledOrPredicate)

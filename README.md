@@ -1,6 +1,6 @@
 # LibEQOL
 
-Quality-of-life toolkit for WoW addons. Today it ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (selection overlays, dialogs, widgets); additional modes like Settings Mode will be added under the same `LibEQOL` umbrella. `LibEQOL-1.0` remains a backward-compatible alias to the Edit Mode sublib for existing users.
+Quality-of-life toolkit for WoW addons. Today it ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (selection overlays, dialogs, widgets) and the Settings helper sublib `LibEQOLSettingsMode-1.0` (helpers for Blizzard Settings UI). `LibEQOL-1.0` remains a backward-compatible alias to the Edit Mode sublib for existing users.
 
 Full docs live at: https://github.com/R41z0r/LibEQOLWiki/wiki
 
@@ -17,7 +17,7 @@ Full docs live at: https://github.com/R41z0r/LibEQOLWiki/wiki
 
 ## Architecture
 - Single-file design with explicit layers: state tracker, pool manager, widget builders, dialog controller, and selection handling.
-- Modules under `LibEQOL`: **LibEQOLEditMode** (shipping) and **LibEQOLSettingsMode** (planned) share the core helpers while exposing separate APIs.
+- Modules under `LibEQOL`: **LibEQOLEditMode** (shipping) and **LibEQOLSettingsMode** (shipping) share the core helpers while exposing separate APIs.
 - Umbrella entry (`LibEQOL.lua`) surfaces sublibs on `_G.LibEQOL` (`EditMode` is loaded by default; future modules attach alongside).
 - All widgets are built on-demand from our factories; no embedded Blizzard UI copies or borrowed layout code.
 - Public API for Edit Mode (`AddFrame`, `AddFrameSettings`, `AddFrameSettingsButton`, callbacks, `SettingType`, etc.) stays stable for drop-in compatibility.
@@ -80,6 +80,7 @@ end)
 - `AddFrameSettings(frame, settingsTable)` – supply rows for the settings dialog. See **Setting rows**.
 - `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler) using the built-in Edit Mode extra button style.
 - `SetFrameResetVisible(frame, showReset)` – hide or re-show the built-in "Reset Position" button.
+- `SetFrameSettingsResetVisible(frame, showReset)` – hide or re-show the settings "Reset to Default" button for that frame.
 - `SetFrameDragEnabled(frame, enabledOrPredicate)` – allow/deny drag + keyboard nudging for a frame; pass a boolean or function `(layoutName, layoutIndex)`; `nil` removes the override. You can also set `defaultPosition.allowDrag`/`dragEnabled` on `AddFrame`.
 - `SetFrameOverlayToggleEnabled(frame, enabled)` – show/hide the eye-button for that frame; default is disabled until you opt-in.
 - `SetFrameCollapseExclusive(frame, enabled)` – make collapsible headers on this frame exclusive (expanding one collapses the others). You can also set `defaultPosition.collapseExclusive` (alias `exclusiveCollapse`) on `AddFrame`.
