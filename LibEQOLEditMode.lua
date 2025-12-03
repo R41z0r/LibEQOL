@@ -2495,6 +2495,9 @@ local function handleSelectionMouseDown(self)
 	hideOverlapMenu()
 	local cx, cy = getCursorPositionUI()
 	local hits = collectOverlappingSelections(cx, cy)
+	if #hits <= 1 and self.isSelected then
+		return
+	end
 	if #hits > 1 then
 		selectSelection(self)
 		showOverlapMenu(hits, cx, cy, self)
