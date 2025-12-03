@@ -665,6 +665,16 @@ local function buildDropdown()
 		self.Label:SetText(data.name)
 		self.ignoreInLayout = nil
 
+		if data.useOldStyle and self.OldDropdown then
+			self.Control:Hide()
+			self.OldDropdown:Show()
+			self.Dropdown = self.OldDropdown
+		else
+			if self.OldDropdown then self.OldDropdown:Hide() end
+			self.Control:Show()
+			self.Dropdown = self.Control.Dropdown
+		end
+
 		if data.generator then
 			self.Dropdown:SetupMenu(function(owner, rootDescription)
 				pcall(data.generator, owner, rootDescription, data)
@@ -713,18 +723,21 @@ local function buildDropdown()
 
 		local control = CreateFrame("Frame", nil, frame, "SettingsDropdownWithButtonsTemplate")
 		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		frame.Control = control
 
-		if control.DecrementButton then
-			control.DecrementButton:Hide()
-		end
-		if control.IncrementButton then
-			control.IncrementButton:Hide()
-		end
+		if control.DecrementButton then control.DecrementButton:Hide() end
+		if control.IncrementButton then control.IncrementButton:Hide() end
 
 		local dropdown = control.Dropdown
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
+
+		local oldDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		oldDropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		oldDropdown:SetSize(200, 30)
+		oldDropdown:Hide()
+		frame.OldDropdown = oldDropdown
 
 		return frame
 	end, function(_, frame)
@@ -745,6 +758,21 @@ local function buildMultiDropdown()
 
 		self.Label:SetText(data.name)
 		self.Dropdown:SetDefaultText(CUSTOM)
+
+		if data.useOldStyle and self.OldDropdown then
+			self.Control:Hide()
+			self.OldDropdown:Show()
+			self.Dropdown = self.OldDropdown
+		else
+			if self.OldDropdown then self.OldDropdown:Hide() end
+			self.Control:Show()
+			self.Dropdown = self.Control.Dropdown
+		end
+		if self.Summary then
+			self.Summary:ClearAllPoints()
+			self.Summary:SetPoint("TOPLEFT", self.Dropdown, "BOTTOMLEFT", 0, -2)
+			self.Summary:SetPoint("TOPRIGHT", self.Dropdown, "BOTTOMRIGHT", 0, -2)
+		end
 
 		local targetHeight = self.hideSummary and 32 or 48
 		self.fixedHeight = targetHeight
@@ -944,6 +972,7 @@ local function buildMultiDropdown()
 
 		local control = CreateFrame("Frame", nil, frame, "SettingsDropdownWithButtonsTemplate")
 		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		frame.Control = control
 
 		if control.DecrementButton then
 			control.DecrementButton:Hide()
@@ -956,6 +985,12 @@ local function buildMultiDropdown()
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
+
+		local oldDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		oldDropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		oldDropdown:SetSize(200, 30)
+		oldDropdown:Hide()
+		frame.OldDropdown = oldDropdown
 
 		local summary = frame:CreateFontString(nil, nil, "GameFontHighlightSmall")
 		summary:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
@@ -1248,6 +1283,24 @@ local function buildDropdownColor()
 		self.Label:SetText(data.name)
 		self.ignoreInLayout = nil
 
+		if data.useOldStyle then
+			if self.OldDropdown then
+				self.Control:Hide()
+				self.OldDropdown:Show()
+				self.Dropdown = self.OldDropdown
+				self.Button:ClearAllPoints()
+				self.Button:SetPoint("LEFT", self.Dropdown, "RIGHT", 6, 0)
+			end
+		else
+			if self.OldDropdown then
+				self.OldDropdown:Hide()
+			end
+			self.Control:Show()
+			self.Dropdown = self.Control.Dropdown
+			self.Button:ClearAllPoints()
+			self.Button:SetPoint("LEFT", self.Dropdown, "RIGHT", 6, 0)
+		end
+
 		local function createEntries(rootDescription)
 			if data.height then
 				rootDescription:SetScrollMode(data.height)
@@ -1371,8 +1424,10 @@ local function buildDropdownColor()
 		label:SetJustifyH("LEFT")
 		frame.Label = label
 
+		-- modern control
 		local control = CreateFrame("Frame", nil, frame, "SettingsDropdownWithButtonsTemplate")
 		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		frame.Control = control
 
 		if control.DecrementButton then
 			control.DecrementButton:Hide()
@@ -1385,6 +1440,13 @@ local function buildDropdownColor()
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetSize(200, 30)
 		frame.Dropdown = dropdown
+
+		-- old style control (hidden by default)
+		local oldDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+		oldDropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
+		oldDropdown:SetSize(200, 30)
+		oldDropdown:Hide()
+		frame.OldDropdown = oldDropdown
 
 		local button = CreateFrame("Button", nil, frame)
 		button:SetSize(36, 22)
