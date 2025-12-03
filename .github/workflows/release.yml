@@ -30,10 +30,15 @@ jobs:
       - name: Bump SettingsLib composite version (patch)
         run: python3 scripts/bump_settings_version.py
 
+      - name: Bump EditMode composite version (patch)
+        run: python3 scripts/bump_editmode_version.py
+
       - name: Show bumped SettingsLib version
         run: |
           echo "Settings version JSON:"
           cat scripts/settings-version.json
+          echo "EditMode version JSON:"
+          cat scripts/editmode-version.json
 
       - name: Install and run Luacheck
         uses: nebularg/actions-luacheck@v1
