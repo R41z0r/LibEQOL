@@ -71,6 +71,16 @@ globals = {
 	"MouseIsOver",
 	"GetMouseFocus",
 	"CreateSettingsButtonInitializer",
+	"CreateFramePool",
+	"SettingsDropdownControlMixin",
+	"SettingsListElementMixin",
+	"SettingsListElementMixin",
+	"SettingsDropdownControlMixin",
+	"PlaySoundFile",
+	"hooksecurefunc",
+	"LibEQOL_ColorOverridesMixin",
+	"LibEQOL_MultiDropdownMixin",
+	"LibEQOL_SoundDropdownMixin",
 }
 
 files = {

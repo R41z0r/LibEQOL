@@ -18,6 +18,7 @@ COMPOSITE_MAJOR_MULT = 1_000_000
 
 VERSION_FILE = Path("scripts/settings-version.json")
 TARGETS = [
+    Path("LibEQOLEditMode.lua"),
     Path("LibEQOLSettingsMode.lua"),
     Path("LibEQOLSettingsMultiDropdown.lua"),
     Path("LibEQOLSettingsSoundDropdown.lua"),
