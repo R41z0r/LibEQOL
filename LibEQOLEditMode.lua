@@ -47,6 +47,7 @@ local State = {
 	overlayToggleFlags = lib.overlayToggleFlags or {},
 	dragPredicates = lib.dragPredicates or {},
 	layoutSnapshot = Internal.layoutNameSnapshot,
+	pendingDeletedLayouts = lib.pendingDeletedLayouts or {},
 }
 
 lib.selectionRegistry = State.selectionRegistry
@@ -61,6 +62,7 @@ lib.collapseExclusiveFlags = State.collapseExclusiveFlags
 lib.widgetPools = State.widgetPools
 lib.overlayToggleFlags = State.overlayToggleFlags
 lib.dragPredicates = State.dragPredicates
+lib.pendingDeletedLayouts = State.pendingDeletedLayouts
 
 -- frequently used globals ----------------------------------------------------------
 local CreateFrame = _G.CreateFrame
@@ -104,7 +106,7 @@ local GetSpecialization = C_SpecializationInfo and C_SpecializationInfo.GetSpeci
 
 -- layout names are lazily resolved so we do not need early API availability
 local layoutNames = lib.layoutNames
-	or setmetatable({ "Modern", "Classic" }, {
+	or setmetatable({ _G.LAYOUT_STYLE_MODERN or "Modern", _G.LAYOUT_STYLE_CLASSIC or "Classic" }, {
 		__index = function(t, key)
 			if key <= 2 then
 				return rawget(t, key)
@@ -416,6 +418,48 @@ local function snapshotLayoutNames(layoutInfo)
 	return snapshot
 end
 
+-- Track deleted layout names so we can still surface them once the delete event fires.
+local function recordDeletedLayouts(oldSnapshot, newSnapshot)
+	if not oldSnapshot or #newSnapshot >= #oldSnapshot then
+		return
+	end
+	local deletedIndex
+	for i = 1, #oldSnapshot do
+		if oldSnapshot[i] ~= newSnapshot[i] then
+			deletedIndex = i
+			break
+		end
+	end
+	deletedIndex = deletedIndex or #oldSnapshot
+	local deletedName = oldSnapshot[deletedIndex]
+	if not deletedName then
+		return
+	end
+	local uiIndex = deletedIndex + 2
+	if not State.pendingDeletedLayouts[uiIndex] then
+		State.pendingDeletedLayouts[uiIndex] = deletedName
+	end
+end
+
+-- Prefer cached names so we can resolve deleted layouts before reloading from the API.
+local function getCachedLayoutName(layoutIndex)
+	if not layoutIndex then
+		return nil
+	end
+	if layoutIndex > 2 then
+		local pending = State.pendingDeletedLayouts
+		if pending and pending[layoutIndex] then
+			return pending[layoutIndex]
+		end
+		local snapshot = State.layoutSnapshot or Internal.layoutNameSnapshot
+		local cached = snapshot and snapshot[layoutIndex - 2]
+		if cached then
+			return cached
+		end
+	end
+	return layoutNames[layoutIndex]
+end
+
 local function updateActiveLayoutFromAPI()
 	if not C_EditMode or not C_EditMode.GetLayouts then
 		return
@@ -452,10 +496,14 @@ function Layout:HandleLayoutsChanged(_, layoutInfo)
 	for index, newName in pairs(newSnapshot) do
 		local oldName = oldSnapshot[index]
 		if oldName and newName and oldName ~= newName then
+			local uiIndex = index + 2
 			for _, callback in next, lib.eventHandlersLayoutRenamed do
-				securecallfunction(callback, oldName, newName, index)
+				securecallfunction(callback, oldName, newName, uiIndex)
 			end
 		end
+	end
+	if layoutInfo and layoutInfo.layouts then
+		recordDeletedLayouts(oldSnapshot, newSnapshot)
 	end
 	State.layoutSnapshot = newSnapshot
 	Internal.layoutNameSnapshot = State.layoutSnapshot
@@ -481,22 +529,27 @@ function Layout:HandleSpecChanged()
 end
 
 function Layout:HandleLayoutDeleted(deletedLayoutIndex)
+	local deletedName = getCachedLayoutName(deletedLayoutIndex)
 	for _, callback in next, lib.eventHandlersLayoutDeleted do
-		securecallfunction(callback, deletedLayoutIndex)
+		securecallfunction(callback, deletedLayoutIndex, deletedName)
 	end
+	State.pendingDeletedLayouts[deletedLayoutIndex] = nil
 end
 
 function Layout:HandleLayoutAdded(addedLayoutIndex, activateNewLayout, isLayoutImported)
 	local layoutType
+	local layoutName
 	if C_EditMode_GetLayouts then
 		local info = C_EditMode_GetLayouts()
 		local entry = info and info.layouts and info.layouts[addedLayoutIndex - 2]
 		if entry and entry.layoutType then
 			layoutType = entry.layoutType
 		end
+		layoutName = entry and entry.layoutName or layoutName
 	end
+	layoutName = layoutName or layoutNames[addedLayoutIndex]
 	for _, callback in next, lib.eventHandlersLayoutAdded do
-		securecallfunction(callback, addedLayoutIndex, activateNewLayout, isLayoutImported, layoutType)
+		securecallfunction(callback, addedLayoutIndex, activateNewLayout, isLayoutImported, layoutType, layoutName)
 	end
 
 	-- Detect duplicates by serializing and comparing layout info
@@ -507,7 +560,7 @@ function Layout:HandleLayoutAdded(addedLayoutIndex, activateNewLayout, isLayoutI
 			local newLayout = layoutInfo.layouts[customIndex]
 			if newLayout then
 				local newString = C_EditMode_ConvertLayoutInfoToString(newLayout)
-				local newName = newLayout.layoutName
+				local newName = newLayout.layoutName or layoutName
 				if newString and newString ~= "" then
 					local dupes = {}
 					for idx, info in ipairs(layoutInfo.layouts) do
@@ -520,7 +573,7 @@ function Layout:HandleLayoutAdded(addedLayoutIndex, activateNewLayout, isLayoutI
 					end
 					if #dupes > 0 then
 						for _, callback in next, lib.eventHandlersLayoutDuplicate do
-							securecallfunction(callback, addedLayoutIndex, dupes, isLayoutImported, layoutType)
+							securecallfunction(callback, addedLayoutIndex, dupes, isLayoutImported, layoutType, newName)
 						end
 					end
 				end
@@ -2724,6 +2777,31 @@ end
 
 function lib:IsInEditMode()
 	return not not lib.isEditing
+end
+
+function lib:GetLayouts()
+	if not State.layoutSnapshot then
+		updateActiveLayoutFromAPI()
+	end
+	local layoutInfo = C_EditMode_GetLayouts and C_EditMode_GetLayouts()
+	local customLayouts = layoutInfo and layoutInfo.layouts
+	local modernType = Enum and Enum.EditModeLayoutType and Enum.EditModeLayoutType.Modern
+	local classicType = Enum and Enum.EditModeLayoutType and Enum.EditModeLayoutType.Classic
+	local activeLayout = layoutInfo and layoutInfo.activeLayout
+	local results = {}
+	results[1] = { index = 1, name = layoutNames[1], layoutType = modernType, isActive = activeLayout == 1 and 1 or 0 }
+	results[2] = { index = 2, name = layoutNames[2], layoutType = classicType, isActive = activeLayout == 2 and 1 or 0 }
+	for i, name in ipairs(State.layoutSnapshot or {}) do
+		local uiIndex = i + 2
+		local entry = customLayouts and customLayouts[i]
+		results[#results + 1] = {
+			index = uiIndex,
+			name = name or layoutNames[uiIndex],
+			layoutType = entry and entry.layoutType,
+			isActive = activeLayout == uiIndex and 1 or 0,
+		}
+	end
+	return results
 end
 
 function lib:GetFrameDefaultPosition(frame)

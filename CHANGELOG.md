@@ -1,5 +1,22 @@
 # Changelog
 
+## [3] – Unreleased
+
+### Added
+
+- Exposed `GetLayouts()` API returning `{ index, name, layoutType, isActive }` with Modern/Classic populated from Blizzard globals when available.
+- Added layout name to `layoutadded` and `layoutduplicate` callbacks (duplicate passes the new name once).
+- Added cached layout name to `layoutdeleted` callbacks so consumers can show the deleted layout’s name.
+
+### Changed
+
+- `layoutrenamed` callback now uses the UI index (custom layouts offset by +2) for consistency with other layout callbacks.
+- Default Modern/Classic names now pull from `LAYOUT_STYLE_MODERN` / `LAYOUT_STYLE_CLASSIC` when available.
+
+### Fixed
+
+- Layout delete flow now caches removed layout names even when multiple `EDIT_MODE_LAYOUTS_UPDATED` events fire before the delete callback, preventing missing/empty names.
+
 ## [2] – 2025-12-02
 
 ### Added
