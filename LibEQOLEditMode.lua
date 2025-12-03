@@ -545,7 +545,7 @@ function Layout:HandleLayoutAdded(addedLayoutIndex, activateNewLayout, isLayoutI
 		if entry and entry.layoutType then
 			layoutType = entry.layoutType
 		end
-		layoutName = entry and entry.layoutName or layoutName
+		layoutName = entry and entry.layoutName
 	end
 	layoutName = layoutName or layoutNames[addedLayoutIndex]
 	for _, callback in next, lib.eventHandlersLayoutAdded do
@@ -1593,13 +1593,13 @@ local function buildSlider()
 			if value ~= self.currentValue then
 				self.setting.set(lib.activeLayoutName, value, lib:GetActiveLayoutIndex())
 				self.currentValue = value
-				if self.Input and self.Input:IsShown() then
-					self.Input:SetText(tostring(value))
-					if self.Slider.RightText then
-						self.Slider.RightText:Hide()
-					end
-				end
 				Internal:RefreshSettings()
+			end
+			if self.Input and self.Input:IsShown() then
+				self.Input:SetText(tostring(value))
+				if self.Slider.RightText and self.Slider.RightText:IsShown() then
+					self.Slider.RightText:Hide()
+				end
 			end
 		end
 	end
