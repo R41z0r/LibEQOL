@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
 """
-Bump the SettingsLib composite version across all Settings files.
-
-Composite scheme: version = major * 1_000_000 + minor * 1_000 + patch
-This allows 3 digits each for minor/patch (0-999). Adjust constants if needed.
+Bump the EditMode lib composite version.
+Composite: version = major * 1_000_000 + minor * 1_000 + patch
 """
-
 from __future__ import annotations
-
 import json
 import re
 import sys
@@ -15,22 +11,15 @@ from pathlib import Path
 
 COMPOSITE_MINOR_MULT = 1000
 COMPOSITE_MAJOR_MULT = 1_000_000
-
-VERSION_FILE = Path("scripts/settings-version.json")
-TARGETS = [
-    Path("LibEQOLSettingsMode.lua"),
-    Path("LibEQOLSettingsMultiDropdown.lua"),
-    Path("LibEQOLSettingsSoundDropdown.lua"),
-    Path("LibEQOLSettingsColorOverrides.lua"),
-]
+VERSION_FILE = Path("scripts/editmode-version.json")
+TARGETS = [Path("LibEQOLEditMode.lua")]
 
 
 def load_version() -> dict:
     if VERSION_FILE.exists():
         with VERSION_FILE.open() as fh:
             return json.load(fh)
-    # Default seed
-    return {"major": 2, "minor": 0, "patch": 0}
+    return {"major": 1, "minor": 0, "patch": 2}
 
 
 def save_version(ver: dict) -> None:
@@ -41,11 +30,7 @@ def save_version(ver: dict) -> None:
 
 
 def composite(ver: dict) -> int:
-    return (
-        ver["major"] * COMPOSITE_MAJOR_MULT
-        + ver["minor"] * COMPOSITE_MINOR_MULT
-        + ver["patch"]
-    )
+    return ver["major"] * COMPOSITE_MAJOR_MULT + ver["minor"] * COMPOSITE_MINOR_MULT + ver["patch"]
 
 
 def bump(ver: dict, level: str) -> dict:
@@ -64,7 +49,7 @@ def bump(ver: dict, level: str) -> dict:
 
 def update_file(path: Path, value: int) -> None:
     text = path.read_text()
-    pattern = re.compile(r'("LibEQOLSettingsMode-1\.0"\s*,\s*)(\d+)')
+    pattern = re.compile(r'(LibEQOLEditMode-1\.0",\s*"LibEQOL-1\.0",\s*)(\d+)')
     new_text, count = pattern.subn(r"\g<1>{}".format(value), text, count=1)
     if count == 0:
         raise SystemExit(f"No version marker found in {path}")
@@ -83,7 +68,7 @@ def main() -> None:
     save_version(ver)
     for target in TARGETS:
         update_file(target, value)
-    print(f"Updated SettingsLib version to {ver['major']}.{ver['minor']}.{ver['patch']} (composite {value})")
+    print(f"Updated EditMode version to {ver['major']}.{ver['minor']}.{ver['patch']} (composite {value})")
 
 
 if __name__ == "__main__":
