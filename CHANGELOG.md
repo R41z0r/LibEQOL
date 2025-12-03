@@ -7,6 +7,7 @@
 - Exposed `GetLayouts()` API returning `{ index, name, layoutType, isActive }` with Modern/Classic populated from Blizzard globals when available.
 - Added layout name to `layoutadded` and `layoutduplicate` callbacks (duplicate passes the new name once).
 - Added cached layout name to `layoutdeleted` callbacks so consumers can show the deleted layout’s name.
+- `internal:RefreshSettingValues` now accepts an optional list of setting rows to refresh selectively.
 
 ### Changed
 
@@ -16,6 +17,7 @@
 ### Fixed
 
 - Layout delete flow now caches removed layout names even when multiple `EDIT_MODE_LAYOUTS_UPDATED` events fire before the delete callback, preventing missing/empty names.
+- Protected `SetPropagateKeyboardInput` now only runs when Edit Mode is open and not in combat, avoiding `ADDON_ACTION_BLOCKED` during login/combat and preventing key capture outside Edit Mode.
 
 ## [2] – 2025-12-02
 

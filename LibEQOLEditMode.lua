@@ -2198,6 +2198,24 @@ local function isInCombat()
 	return InCombatLockdown and InCombatLockdown()
 end
 
+local function setPropagateKeyboardInputSafe(frame, propagate)
+	if not frame or not frame.SetPropagateKeyboardInput or isInCombat() or not lib.isEditing then
+		return
+	end
+	frame:SetPropagateKeyboardInput(not not propagate)
+end
+
+local function updateSelectionKeyboard(selection)
+	if not selection or not selection.EnableKeyboard then
+		return
+	end
+	local allow = lib.isEditing and not isInCombat()
+	selection:EnableKeyboard(allow)
+	if allow then
+		setPropagateKeyboardInputSafe(selection, true)
+	end
+end
+
 local function deriveAnchorAndOffset(frame)
 	-- Finds the nearest anchor on each axis (left/right/center, top/bottom/center) and
 	-- returns a Blizzard anchor string plus offsets relative to the parent.
@@ -2282,6 +2300,7 @@ local function resetSelectionIndicators()
 		else
 			selection:ShowHighlighted()
 		end
+		updateSelectionKeyboard(selection)
 	end
 	if Internal.dialog and Internal.dialog.HideLabelButton then
 		updateEyeButton(Internal.dialog.HideLabelButton, false)
@@ -2545,40 +2564,25 @@ function lib:AddFrame(frame, callback, default)
 		end
 		local step = IsShiftKeyDown() and 10 or 1
 		if key == "UP" then
-			if selectionFrame.SetPropagateKeyboardInput then
-				selectionFrame:SetPropagateKeyboardInput(false)
-			end
+			setPropagateKeyboardInputSafe(selectionFrame, false)
 			adjustPosition(selectionFrame.parent, 0, step)
 		elseif key == "DOWN" then
-			if selectionFrame.SetPropagateKeyboardInput then
-				selectionFrame:SetPropagateKeyboardInput(false)
-			end
+			setPropagateKeyboardInputSafe(selectionFrame, false)
 			adjustPosition(selectionFrame.parent, 0, -step)
 		elseif key == "LEFT" then
-			if selectionFrame.SetPropagateKeyboardInput then
-				selectionFrame:SetPropagateKeyboardInput(false)
-			end
+			setPropagateKeyboardInputSafe(selectionFrame, false)
 			adjustPosition(selectionFrame.parent, -step, 0)
 		elseif key == "RIGHT" then
-			if selectionFrame.SetPropagateKeyboardInput then
-				selectionFrame:SetPropagateKeyboardInput(false)
-			end
+			setPropagateKeyboardInputSafe(selectionFrame, false)
 			adjustPosition(selectionFrame.parent, step, 0)
 		else
-			if selectionFrame.SetPropagateKeyboardInput then
-				selectionFrame:SetPropagateKeyboardInput(true)
-			end
+			setPropagateKeyboardInputSafe(selectionFrame, true)
 		end
 	end)
 	selection:SetScript("OnKeyUp", function(selectionFrame)
-		if selectionFrame.SetPropagateKeyboardInput then
-			selectionFrame:SetPropagateKeyboardInput(true)
-		end
+		setPropagateKeyboardInputSafe(selectionFrame, true)
 	end)
-	selection:EnableKeyboard(true)
-	if selection.SetPropagateKeyboardInput then
-		selection:SetPropagateKeyboardInput(true)
-	end
+	updateSelectionKeyboard(selection)
 	selection:Hide()
 
 	selection.labelHidden = false
@@ -2873,7 +2877,7 @@ function Internal:RefreshSettings()
 	end
 end
 
-function Internal:RefreshSettingValues()
+function Internal:RefreshSettingValues(targetSettings)
 	if not (Internal.dialog and Internal.dialog:IsShown()) then
 		return
 	end
@@ -2890,6 +2894,25 @@ function Internal:RefreshSettingValues()
 	if not settings or num == 0 then
 		return
 	end
+	local targets
+	if type(targetSettings) == "table" then
+		targets = {}
+		for _, entry in ipairs(targetSettings) do
+			if type(entry) == "table" then
+				targets[entry] = true
+			end
+		end
+		for key, value in pairs(targetSettings) do
+			if type(key) == "table" and value then
+				targets[key] = true
+			elseif type(value) == "table" then
+				targets[value] = true
+			end
+		end
+		if next(targets) == nil then
+			targets = nil
+		end
+	end
 	for _, child in ipairs({ parent:GetChildren() }) do
 		local data
 		if child.layoutIndex and settings[child.layoutIndex] then
@@ -2897,7 +2920,7 @@ function Internal:RefreshSettingValues()
 		elseif child.setting then
 			data = child.setting
 		end
-		if data and child.Setup then
+		if data and child.Setup and (not targets or targets[data]) then
 			child:Setup(data, selection)
 			child.setting = data
 			if child.SetEnabled then
