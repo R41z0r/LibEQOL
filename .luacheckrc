@@ -65,6 +65,12 @@ globals = {
 	"UIParentMiddleLeft",
 	"UIParentMiddleMiddle",
 	"UIParentMiddleRight",
+	"CreateFromMixins",
+	"SettingsListElementMixin",
+	"SettingsDropdownControlMixin",
+	"MouseIsOver",
+	"GetMouseFocus",
+	"CreateSettingsButtonInitializer",
 }
 
 files = {
