@@ -2,7 +2,7 @@
 
 Quality-of-life toolkit for WoW addons. Today it ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (selection overlays, dialogs, widgets) and the Settings helper sublib `LibEQOLSettingsMode-1.0` (helpers for Blizzard Settings UI). `LibEQOL-1.0` remains a backward-compatible alias to the Edit Mode sublib for existing users.
 
-Full docs live at: https://github.com/R41z0r/LibEQOLWiki/wiki
+Full docs live at: https://github.com/R41z0r/LibEQOL/wiki
 
 ## Requirements
 - Retail WoW 10.0+ (uses Edit Mode APIs)
@@ -90,7 +90,7 @@ end)
 - `GetFrameDefaultPosition(frame)` – retrieve the default position for a registered frame.
 - `lib.internal:RefreshSettings()` – re-evaluate `isEnabled`/`disabled` predicates on visible rows.
 
-Example: `examples/EditModeExamples.lua` (https://raw.githubusercontent.com/R41z0r/LibEQOL/main/examples/EditModeExamples.lua) includes an "Overlay Toggle" frame showing how to opt into the eye-button via `enableOverlayToggle = true`. Also see `docs/overlay-toggle-example.lua`. GIF: https://raw.githubusercontent.com/wiki/R41z0r/LibEQOLWiki/assets/widgets/frames/example-hideoverlay.gif
+Example: `examples/EditModeExamples.lua` (https://raw.githubusercontent.com/R41z0r/LibEQOL/main/examples/EditModeExamples.lua) includes an "Overlay Toggle" frame showing how to opt into the eye-button via `enableOverlayToggle = true`. Also see `docs/overlay-toggle-example.lua`. GIF: https://raw.githubusercontent.com/wiki/R41z0r/LibEQOL/assets/widgets/frames/example-hideoverlay.gif
 
 ## Setting rows (schema + examples)
 Each row needs `name`, `kind`, `get(layoutName)`, `set(layoutName, value)`, and `default`. Optional `isEnabled(layoutName)` or `disabled(layoutName)` toggle availability.
