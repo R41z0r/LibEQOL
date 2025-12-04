@@ -379,7 +379,7 @@ function lib:CreateSoundDropdown(cat, data)
 		data.set,
 		data
 	)
-	local initializer = Settings.CreateElementInitializer("LibEQOL_SoundDropdownTemplate", {
+	local initializer = Settings.CreateElementInitializer("LibEQOL@file-author@_SoundDropdownTemplate", {
 		setting = setting,
 		options = data.values or data.options,
 		optionfunc = data.optionfunc,
@@ -407,7 +407,7 @@ end
 
 function lib:CreateColorOverrides(cat, data)
 	assert(cat and data and data.entries, "category and entries required")
-	local initializer = Settings.CreateElementInitializer("LibEQOL_ColorOverridesPanelNoHead", {
+	local initializer = Settings.CreateElementInitializer("LibEQOL@file-author@_ColorOverridesPanelNoHead", {
 		categoryID = cat:GetID(),
 		entries = data.entries,
 		getColor = data.getColor,
@@ -437,7 +437,7 @@ function lib:CreateMultiDropdown(cat, data)
 		function() end,
 		data
 	)
-	local initializer = Settings.CreateElementInitializer("LibEQOL_MultiDropdownTemplate", {
+	local initializer = Settings.CreateElementInitializer("LibEQOL@file-author@_MultiDropdownTemplate", {
 		label = data.name or data.text or data.key,
 		options = data.values,
 		optionfunc = data.optionfunc,
@@ -464,7 +464,8 @@ function lib:CreateHeader(cat, text)
 end
 
 function lib:CreateText(cat, text)
-	local init = Settings.CreateElementInitializer("LibEQOL_SettingsListSectionHintTemplate", { name = text })
+	local init =
+		Settings.CreateElementInitializer("LibEQOL@file-author@_SettingsListSectionHintTemplate", { name = text })
 	addSearchTags(init, text, text)
 	Settings.RegisterInitializer(cat, init)
 	return init
