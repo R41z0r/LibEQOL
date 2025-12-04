@@ -1,6 +1,11 @@
 # Changelog
 
-## [3] – Unreleased
+## [4] - Unreleased
+
+Bugfix:
+- Duplicate load of XML templates shared across multiple addons fixed; template names are auto-suffixed via `@project-abbreviated-hash@` in the BigWigs packager to avoid “Deferred XML Node … already exists” when multiple embeds are present
+
+## [3] – 2025-12-03
 
 ### Added
 
