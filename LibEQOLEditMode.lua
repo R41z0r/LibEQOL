@@ -809,8 +809,16 @@ local function buildMultiDropdown()
 		self.summaryMeasure = nil
 		self.hideSummary = data.hideSummary or data.noSummary or data.summary == false
 
+		local defaultText
+		if data.customText ~= nil then
+			defaultText = tostring(data.customText)
+		elseif data.customDefaultText ~= nil then
+			defaultText = tostring(data.customDefaultText)
+		else
+			defaultText = ""
+		end
+
 		self.Label:SetText(data.name)
-		self.Dropdown:SetDefaultText(CUSTOM)
 
 		if data.useOldStyle and self.OldDropdown then
 			self.Control:Hide()
@@ -821,6 +829,12 @@ local function buildMultiDropdown()
 			self.Control:Show()
 			self.Dropdown = self.Control.Dropdown
 		end
+
+		-- Keep both dropdown variants in sync so switching styles doesn't bring back "Custom"
+		if self.Control and self.Control.Dropdown then self.Control.Dropdown:SetDefaultText(defaultText) end
+		if self.OldDropdown then self.OldDropdown:SetDefaultText(defaultText) end
+		self.Dropdown:SetDefaultText(defaultText)
+
 		if self.Summary then
 			self.Summary:ClearAllPoints()
 			self.Summary:SetPoint("TOPLEFT", self.Dropdown, "BOTTOMLEFT", 0, -2)
