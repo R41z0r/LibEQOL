@@ -1,5 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <Frame name="LibEQOL@file-author@_SettingsListSectionHintTemplate" mixin="SettingsListSectionHeaderMixin" virtual="true">
+    <Frame name="LibEQOL@project-abbreviated-hash@_SettingsListSectionHintTemplate" mixin="SettingsListSectionHeaderMixin" virtual="true">
         <Size x="30" y="29"/>
         <Layers>
         <Layer level="OVERLAY">
@@ -23,7 +23,7 @@
         </Scripts>
     </Frame>
 
-     <Button name="LibEQOL@file-author@_MultiDropdownTemplate"
+     <Button name="LibEQOL@project-abbreviated-hash@_MultiDropdownTemplate"
         virtual="true"
         inherits="SettingsDropdownControlTemplate"
         mixin="LibEQOL_MultiDropdownMixin">
@@ -40,7 +40,7 @@
         </Layers>
     </Button>
 
-    <Frame name="LibEQOL@file-author@_ColorOverridesPanel" mixin="LibEQOL_ColorOverridesMixin" virtual="true">
+    <Frame name="LibEQOL@project-abbreviated-hash@_ColorOverridesPanel" mixin="LibEQOL_ColorOverridesMixin" virtual="true">
 		<Size x="200" y="60"/>
 		<Layers>
 			<Layer level="ARTWORK">
@@ -72,7 +72,7 @@
 		</Scripts>
 	</Frame>
 
-	<Frame name="LibEQOL@file-author@_ColorOverridesPanelNoHead" 
+	<Frame name="LibEQOL@project-abbreviated-hash@_ColorOverridesPanelNoHead" 
 		mixin="LibEQOL_ColorOverridesMixin" 
 		inherits="SettingsListElementTemplate"
 		virtual="true"
@@ -108,7 +108,7 @@
 		</Scripts>
 	</Frame>
 
-	<Frame name="LibEQOL@file-author@_SoundDropdownTemplate"
+	<Frame name="LibEQOL@project-abbreviated-hash@_SoundDropdownTemplate"
 		inherits="SettingsListElementTemplate"
 		mixin="LibEQOL_SoundDropdownMixin"
 		virtual="true"
