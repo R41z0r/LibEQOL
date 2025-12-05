@@ -1,4 +1,4 @@
-local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 1000004
+local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 1000005
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -64,12 +64,131 @@ lib.overlayToggleFlags = State.overlayToggleFlags
 lib.dragPredicates = State.dragPredicates
 lib.pendingDeletedLayouts = State.pendingDeletedLayouts
 
+-- Blizzard frames we also toggle via the manager eye (if they exist)
+Internal.managerExtraFrames = Internal.managerExtraFrames
+	or {
+		"PlayerFrame",
+		"TargetFrame",
+		"FocusFrame",
+		"PartyFrame",
+		"CompactRaidFrameContainer",
+		"BossTargetFrameContainer",
+		"ArenaEnemyFramesContainer",
+		"MinimapCluster",
+		"MainMenuBar",
+		"ObjectiveTrackerFrame",
+		-- Action bars / buttons
+		"MainActionBar",
+		"MultiBarBottomLeft",
+		"MultiBarBottomRight",
+		"MultiBarRight",
+		"MultiBarLeft",
+		"MultiBar5",
+		"MultiBar6",
+		"MultiBar7",
+		"MultiBar8",
+		"StanceBar",
+		"StanceBarFrame",
+		"PetActionBar",
+		"PossessActionBar",
+		"ExtraAbilityContainer",
+		"MainMenuBarVehicleLeaveButton",
+		"EncounterBar",
+		"UtilityCooldownViewer",
+		"EssentialCooldownViewer",
+		"BuffIconCooldownViewer",
+		"BuffBarCooldownViewer",
+		-- Bags / micromenu
+		"BagsBar",
+		"MicroMenuContainer",
+		-- Tooltips / chat / loot
+		"GameTooltipDefaultContainer",
+		"ChatFrame1",
+		"LootFrame",
+		-- Unit frames
+		"PetFrame",
+		"CompactArenaFrame",
+		"DurabilityFrame",
+		"DebuffFrame",
+		"BuffFrame",
+		"TalkingHeadFrame",
+		"MainStatusTrackingBarContainer",
+		"SecondaryStatusTrackingBarContainer",
+		"PlayerCastingBarFrame",
+	}
+Internal.managerHiddenFrames = Internal.managerHiddenFrames or {}
+Internal.managerEyeLocales = Internal.managerEyeLocales
+	or {
+		enUS = {
+			show = "Show all windows",
+			hide = "Hide all windows",
+			body = "Toggles every edit mode window, including Blizzard frames.",
+		},
+		enGB = {
+			show = "Show all windows",
+			hide = "Hide all windows",
+			body = "Toggles every edit mode window, including Blizzard frames.",
+		},
+		deDE = {
+			show = "Alle Fenster einblenden",
+			hide = "Alle Fenster ausblenden",
+			body = "Schaltet alle Edit-Mode-Fenster inklusive Blizzard-Frames um.",
+		},
+		frFR = {
+			show = "Afficher toutes les fenêtres",
+			hide = "Masquer toutes les fenêtres",
+			body = "Bascule toutes les fenêtres du mode édition, y compris celles de Blizzard.",
+		},
+		esES = {
+			show = "Mostrar todas las ventanas",
+			hide = "Ocultar todas las ventanas",
+			body = "Alterna todas las ventanas del modo de edición, incluidas las de Blizzard.",
+		},
+		esMX = {
+			show = "Mostrar todas las ventanas",
+			hide = "Ocultar todas las ventanas",
+			body = "Alterna todas las ventanas del modo de edición, incluidas las de Blizzard.",
+		},
+		itIT = {
+			show = "Mostra tutte le finestre",
+			hide = "Nascondi tutte le finestre",
+			body = "Attiva o disattiva tutte le finestre della modalità di modifica, incluse quelle Blizzard.",
+		},
+		ptBR = {
+			show = "Mostrar todas as janelas",
+			hide = "Ocultar todas as janelas",
+			body = "Alterna todas as janelas do modo de edição, incluindo as da Blizzard.",
+		},
+		ruRU = {
+			show = "Показать все окна",
+			hide = "Скрыть все окна",
+			body = "Переключает все окна режима редактирования, включая окна Blizzard.",
+		},
+		koKR = {
+			show = "모든 창 보이기",
+			hide = "모든 창 숨기기",
+			body = "블리자드 창을 포함한 모든 편집 모드 창을 전환합니다.",
+		},
+		zhCN = {
+			show = "显示所有窗口",
+			hide = "隐藏所有窗口",
+			body = "切换所有编辑模式窗口（含暴雪框体）。",
+		},
+		zhTW = {
+			show = "顯示所有視窗",
+			hide = "隱藏所有視窗",
+			body = "切換所有編輯模式視窗（包含暴雪框體）。",
+		},
+	}
+setmetatable(Internal.managerEyeLocales, { __index = function(t) return t.enUS end })
+
 -- frequently used globals ----------------------------------------------------------
 local CreateFrame = _G.CreateFrame
 local CopyTable = _G.CopyTable
 local Mixin = _G.Mixin
 local InCombatLockdown = _G.InCombatLockdown
 local IsShiftKeyDown = _G.IsShiftKeyDown
+local GetLocale = _G.GetLocale
 local CreateUnsecuredObjectPool = _G.CreateUnsecuredObjectPool
 local hooksecurefunc = _G.hooksecurefunc
 local securecallfunction = _G.securecallfunction
@@ -406,28 +525,101 @@ local function updateEyeButton(eyeButton, hidden)
 end
 
 -- Overlay toggle helpers ------------------------------------------------------
+local function resolveFrame(entry)
+	if type(entry) == "string" then
+		return _G[entry]
+	end
+	return entry
+end
+
+local function getManagerEyeTooltip(allHidden)
+	local locale = GetLocale and GetLocale() or "enUS"
+	local strings = Internal.managerEyeLocales[locale] or Internal.managerEyeLocales.enUS
+	local header = allHidden and strings.show or strings.hide
+	return header, strings.body
+end
+
 local function areAllOverlayTogglesHidden()
-	local anyToggleable = false
-	for frame, selection in next, State.selectionRegistry do
-		if State.overlayToggleFlags[frame] == true then
-			anyToggleable = true
-			if not selection.overlayHidden then
-				return false, anyToggleable
+	local anySelection = false
+	for _, selection in next, State.selectionRegistry do
+		anySelection = true
+		if not selection.overlayHidden then
+			return false, anySelection
+		end
+	end
+	for _, entry in ipairs(Internal.managerExtraFrames) do
+		local frame = resolveFrame(entry)
+		if frame and frame.Selection then
+			local element = frame.Selection
+			anySelection = true
+			if Internal.managerHiddenFrames[element] == nil then
+				return false, anySelection
 			end
 		end
 	end
-	return anyToggleable and true or false, anyToggleable
+	return anySelection and true or false, anySelection
 end
 
 local function setAllOverlayHidden(hidden)
 	local touched = false
-	for frame, selection in next, State.selectionRegistry do
-		if State.overlayToggleFlags[frame] == true then
+	for _, selection in next, State.selectionRegistry do
+		touched = true
+		updateSelectionVisuals(selection, hidden)
+	end
+	for _, entry in ipairs(Internal.managerExtraFrames) do
+		local frame = resolveFrame(entry)
+		local element = frame and frame.Selection
+		if element and element.IsShown and element.Hide then
 			touched = true
-			updateSelectionVisuals(selection, hidden)
+			if hidden then
+				if Internal.managerHiddenFrames[element] == nil then
+					Internal.managerHiddenFrames[element] = {
+						shown = element:IsShown() and true or false,
+						alpha = element.GetAlpha and element:GetAlpha() or nil,
+					}
+				end
+				if element.SetAlpha then
+					element:SetAlpha(0)
+				else
+					element:Hide()
+				end
+			else
+				local wasShown = Internal.managerHiddenFrames[element]
+				if wasShown ~= nil then
+					if element.SetAlpha and wasShown.alpha ~= nil then
+						element:SetAlpha(wasShown.alpha)
+					elseif element.SetAlpha then
+						element:SetAlpha(1)
+					end
+					if wasShown.shown and element.Show then
+						element:Show()
+					end
+					Internal.managerHiddenFrames[element] = nil
+				end
+			end
 		end
 	end
 	return touched
+end
+
+local function restoreManagerExtraFrames(setAlphaToOne)
+	for element, state in next, Internal.managerHiddenFrames do
+		if element then
+			local targetAlpha
+			if setAlphaToOne then
+				targetAlpha = 1
+			elseif state and state.alpha ~= nil then
+				targetAlpha = state.alpha
+			end
+			if targetAlpha and element.SetAlpha then
+				element:SetAlpha(targetAlpha)
+			end
+			if state and state.shown and element.Show then
+				element:Show()
+			end
+		end
+		Internal.managerHiddenFrames[element] = nil
+	end
 end
 
 local function updateManagerEyeButton()
@@ -435,8 +627,11 @@ local function updateManagerEyeButton()
 	if not button then
 		return
 	end
-	local allHidden, hasToggleable = areAllOverlayTogglesHidden()
-	button:SetShown(hasToggleable)
+	local allHidden, hasSelections = areAllOverlayTogglesHidden()
+	button:SetShown(hasSelections)
+	if not hasSelections then
+		return
+	end
 	updateEyeButton(button, allHidden)
 	button.allHidden = allHidden
 end
@@ -447,7 +642,7 @@ local function ensureManagerEyeButton()
 	end
 	local close = EditModeManagerFrame.CloseButton
 	local button = CreateFrame("Button", nil, EditModeManagerFrame)
-	button:SetSize(24, 24)
+	button:SetSize(32, 32)
 	if close then
 		button:SetPoint("RIGHT", close, "LEFT", -4, 0)
 	else
@@ -480,9 +675,12 @@ local function ensureManagerEyeButton()
 			return
 		end
 		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-		local state = areAllOverlayTogglesHidden() and HUD_EDIT_MODE_SHOW or HUD_EDIT_MODE_HIDE
-		GameTooltip:SetText((state or "Toggle") .. " all windows")
-		GameTooltip:AddLine("Hides or shows every edit mode window at once.", 1, 1, 1, true)
+		local state = areAllOverlayTogglesHidden()
+		local header, body = getManagerEyeTooltip(state)
+		GameTooltip:SetText(header or "Toggle")
+		if body then
+			GameTooltip:AddLine(body, 1, 1, 1, true)
+		end
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", GameTooltip_Hide)
@@ -2629,6 +2827,7 @@ overlapGlobalFrame:SetScript("OnEvent", overlapGlobalMouseDown)
 
 local function onEditModeEnter()
 	updateActiveLayoutFromAPI()
+	restoreManagerExtraFrames(true)
 	lib.isEditing = true
 	resetSelectionIndicators()
 	for _, callback in next, lib.eventHandlersEnter do
@@ -2640,6 +2839,7 @@ local function onEditModeExit()
 	lib.isEditing = false
 	resetSelectionIndicators()
 	hideOverlapMenu()
+	updateManagerEyeButton()
 	for _, callback in next, lib.eventHandlersExit do
 		securecallfunction(callback)
 	end
