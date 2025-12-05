@@ -1,4 +1,4 @@
-local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 1000003
+local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 1000004
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -403,6 +403,91 @@ local function updateEyeButton(eyeButton, hidden)
 		setEyeFrame(tex, hidden and LFG_EYE_FRAME_CLOSED or LFG_EYE_FRAME_OPEN)
 		tex:SetDesaturated(false)
 	end
+end
+
+-- Overlay toggle helpers ------------------------------------------------------
+local function areAllOverlayTogglesHidden()
+	local anyToggleable = false
+	for frame, selection in next, State.selectionRegistry do
+		if State.overlayToggleFlags[frame] == true then
+			anyToggleable = true
+			if not selection.overlayHidden then
+				return false, anyToggleable
+			end
+		end
+	end
+	return anyToggleable and true or false, anyToggleable
+end
+
+local function setAllOverlayHidden(hidden)
+	local touched = false
+	for frame, selection in next, State.selectionRegistry do
+		if State.overlayToggleFlags[frame] == true then
+			touched = true
+			updateSelectionVisuals(selection, hidden)
+		end
+	end
+	return touched
+end
+
+local function updateManagerEyeButton()
+	local button = Internal.managerEyeButton
+	if not button then
+		return
+	end
+	local allHidden, hasToggleable = areAllOverlayTogglesHidden()
+	button:SetShown(hasToggleable)
+	updateEyeButton(button, allHidden)
+	button.allHidden = allHidden
+end
+
+local function ensureManagerEyeButton()
+	if Internal.managerEyeButton or not EditModeManagerFrame then
+		return
+	end
+	local close = EditModeManagerFrame.CloseButton
+	local button = CreateFrame("Button", nil, EditModeManagerFrame)
+	button:SetSize(24, 24)
+	if close then
+		button:SetPoint("RIGHT", close, "LEFT", -4, 0)
+	else
+		button:SetPoint("TOPRIGHT", EditModeManagerFrame, "TOPRIGHT", -42, -6)
+	end
+	button:SetNormalTexture(LFG_EYE_TEXTURE)
+	local tex = button:GetNormalTexture()
+	if tex then
+		setEyeFrame(tex, LFG_EYE_FRAME_OPEN)
+	end
+	button:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]])
+	local highlight = button:GetHighlightTexture()
+	if highlight then
+		highlight:SetAlpha(0)
+	end
+	button:SetScript("OnClick", function(self)
+		local allHidden, hasToggleable = areAllOverlayTogglesHidden()
+		if not hasToggleable then
+			return
+		end
+		setAllOverlayHidden(not allHidden)
+		updateManagerEyeButton()
+		if Internal.dialog and Internal.dialog.selection and Internal.dialog.HideLabelButton then
+			updateEyeButton(Internal.dialog.HideLabelButton, Internal.dialog.selection.overlayHidden)
+			Internal.dialog:Layout()
+		end
+	end)
+	button:SetScript("OnEnter", function(self)
+		if not GameTooltip then
+			return
+		end
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		local state = areAllOverlayTogglesHidden() and HUD_EDIT_MODE_SHOW or HUD_EDIT_MODE_HIDE
+		GameTooltip:SetText((state or "Toggle") .. " all windows")
+		GameTooltip:AddLine("Hides or shows every edit mode window at once.", 1, 1, 1, true)
+		GameTooltip:Show()
+	end)
+	button:SetScript("OnLeave", GameTooltip_Hide)
+	Internal.managerEyeButton = button
+	updateManagerEyeButton()
 end
 
 local function snapshotLayoutNames(layoutInfo)
@@ -2171,6 +2256,7 @@ function Internal:CreateDialog()
 		local hidden = not selection.overlayHidden
 		updateSelectionVisuals(selection, hidden)
 		updateEyeButton(hideLabelButton, hidden)
+		updateManagerEyeButton()
 		dialog:Layout()
 	end)
 	hideLabelButton:SetScript("OnEnter", function()
@@ -2322,6 +2408,7 @@ local function resetSelectionIndicators()
 	if Internal.dialog and Internal.dialog.HideLabelButton then
 		updateEyeButton(Internal.dialog.HideLabelButton, false)
 	end
+	updateManagerEyeButton()
 end
 
 local function hideOverlapMenu()
@@ -2690,6 +2777,7 @@ function lib:AddFrame(frame, callback, default)
 
 		EditModeManagerFrame:HookScript("OnShow", onEditModeEnter)
 		EditModeManagerFrame:HookScript("OnHide", onEditModeExit)
+		ensureManagerEyeButton()
 
 		hooksecurefunc(EditModeManagerFrame, "SelectSystem", function()
 			resetSelectionIndicators()
@@ -2711,6 +2799,7 @@ function lib:AddFrame(frame, callback, default)
 			end
 		end
 	end
+	updateManagerEyeButton()
 end
 
 function lib:AddFrameSettings(frame, settings)
@@ -2760,8 +2849,11 @@ end
 function lib:SetFrameOverlayToggleEnabled(frame, enabled)
 	State.overlayToggleFlags[frame] = not not enabled
 	if enabled == false and State.selectionRegistry[frame] then
-		State.selectionRegistry[frame].overlayHidden = false
+		local selection = State.selectionRegistry[frame]
+		selection.overlayHidden = false
+		updateSelectionVisuals(selection, false)
 	end
+	updateManagerEyeButton()
 end
 
 function lib:RegisterCallback(event, callback)
