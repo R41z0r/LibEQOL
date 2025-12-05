@@ -15,6 +15,10 @@ local SettingsCategoryListButtonMixin = _G.SettingsCategoryListButtonMixin
 local SettingsCheckboxControlMixin = _G.SettingsCheckboxControlMixin
 local SettingsDropdownControlMixin = _G.SettingsDropdownControlMixin
 local SettingsSliderControlMixin = _G.SettingsSliderControlMixin
+local CreateSettingsExpandableSectionInitializer = _G.CreateSettingsExpandableSectionInitializer
+local TextureKitConstants = _G.TextureKitConstants
+local HIGHLIGHT_FONT_COLOR = _G.HIGHLIGHT_FONT_COLOR
+local DISABLED_FONT_COLOR = _G.DISABLED_FONT_COLOR
 
 local function isSearchActive()
 	return SettingsPanel and SettingsPanel.SearchBox and SettingsPanel.SearchBox:HasText()
@@ -516,7 +520,7 @@ function lib:CreateMultiDropdown(cat, data)
 	return initializer, setting
 end
 
-function lib:CreateExpandableSection(cat, data)
+function lib.CreateExpandableSection(_, cat, data)
 	assert(cat and data and (data.name or data.text), "category and data.name required")
 
 	local nameGetter = data.name or data.text or data.key or "Section"
@@ -537,6 +541,8 @@ function lib:CreateExpandableSection(cat, data)
 
 	initializer.data.nameGetter = nameGetter
 	initializer.data.expanded = data.expanded ~= false
+	initializer.data.colorizeTitle = data.colorizeTitle == true
+	initializer.data.titleColor = data.titleColor
 
 	function initializer:GetExtent()
 		return data.extent or 25
@@ -560,7 +566,12 @@ function lib:CreateExpandableSection(cat, data)
 			end
 
 			if frame.Button and frame.Button.Text then
-				local color = expanded and HIGHLIGHT_FONT_COLOR or DISABLED_FONT_COLOR
+				local color
+				if initializer.data.colorizeTitle then
+					color = expanded and HIGHLIGHT_FONT_COLOR or DISABLED_FONT_COLOR
+				else
+					color = initializer.data.titleColor or HIGHLIGHT_FONT_COLOR
+				end
 				frame.Button.Text:SetTextColor(color:GetRGB())
 			end
 		end
