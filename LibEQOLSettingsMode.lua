@@ -576,13 +576,13 @@ function lib.CreateExpandableSection(_, cat, data)
 			end
 		end
 
-			function frame:OnExpandedChanged(expanded)
-				applyVisuals(frame:GetElementData():IsExpanded())
+			frame.OnExpandedChanged = function(frameSelf, expanded)
+				applyVisuals(frameSelf:GetElementData():IsExpanded())
 				refreshSettingsLayout()
 			end
 
-			function frame:CalculateHeight()
-				local elementData = frame:GetElementData()
+			frame.CalculateHeight = function(frameSelf)
+				local elementData = frameSelf:GetElementData()
 				return elementData:GetExtent()
 			end
 
