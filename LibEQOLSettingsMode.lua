@@ -1,4 +1,4 @@
-local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 4000001
+local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 5000001
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -15,6 +15,10 @@ local SettingsCategoryListButtonMixin = _G.SettingsCategoryListButtonMixin
 local SettingsCheckboxControlMixin = _G.SettingsCheckboxControlMixin
 local SettingsDropdownControlMixin = _G.SettingsDropdownControlMixin
 local SettingsSliderControlMixin = _G.SettingsSliderControlMixin
+
+local function isSearchActive()
+	return SettingsPanel and SettingsPanel.SearchBox and SettingsPanel.SearchBox:HasText()
+end
 
 local State = {
 	rootCategory = nil,
@@ -257,7 +261,12 @@ local function applyExpandablePredicate(initializer, data)
 
 	local predicate = normalizeSectionPredicate(data.parentSection or data.section or data.expandWith)
 	if predicate and initializer.AddShownPredicate then
-		initializer:AddShownPredicate(predicate)
+		initializer:AddShownPredicate(function()
+			if isSearchActive() then
+				return true
+			end
+			return predicate()
+		end)
 	end
 end
 
@@ -534,7 +543,7 @@ function lib:CreateExpandableSection(cat, data)
 	end
 
 	function initializer:IsExpanded()
-		return self.data and self.data.expanded ~= false
+		return isSearchActive() or (self.data and self.data.expanded ~= false)
 	end
 
 	local origInitFrame = initializer.InitFrame
@@ -557,7 +566,7 @@ function lib:CreateExpandableSection(cat, data)
 		end
 
 		function frame:OnExpandedChanged(expanded)
-			applyVisuals(expanded)
+			applyVisuals(self:GetElementData():IsExpanded())
 			refreshSettingsLayout()
 		end
 
@@ -566,7 +575,7 @@ function lib:CreateExpandableSection(cat, data)
 			return elementData:GetExtent()
 		end
 
-		applyVisuals(self.data.expanded)
+		applyVisuals(self:IsExpanded())
 	end
 
 	addSearchTags(initializer, data.searchtags, resolvedName)
