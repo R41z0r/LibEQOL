@@ -14,19 +14,19 @@ Full docs live at: https://github.com/R41z0r/LibEQOL/wiki
   ```
   <Include file="libs/LibEQOL/LibEQOL.xml" />
   ```
+- **Packaging (BigWigs packager):** Do **not** list LibEQOL as an External; it can bleed into other addons and create XML/template conflicts. Vendor it explicitly (e.g. with the GitHub Action below) into your `libs/` directory instead.
 
 ## GitHub Action helper
-Use the composite action at `.github/actions/install-libeqol` to pull the latest release ZIP and unpack it into your addon during CI.
+Use the published action in this repo to pull the latest LibEQOL release ZIP during CI and unpack it into your addon. Set `destination` to the folder that should contain `LibEQOL/` (for example `EnhanceQoL/libs`); the action creates that path, extracts the ZIP, and stages `destination/LibEQOL` in your repo.
 
 ```
 - name: Install LibEQOL
-  uses: R41z0r/LibEQOL/.github/actions/install-libeqol@main
+  uses: R41z0r/LibEQOL@v1.0.0
   with:
-    destination: EnhanceQoL/libs   # where LibEQOL/ should be extracted
-    git-add: true                  # optionally stage EnhanceQoL/libs/LibEQOL
+    destination: EnhanceQoL/libs   # results in EnhanceQoL/libs/LibEQOL
 ```
 
-Outputs: `tag` and `asset_url` from the resolved release.
+Optional inputs: `repo` (defaults to this repo) and `github-token` (defaults to `github.token`). Outputs: `tag` and `asset_url` from the resolved release.
 
 ## Architecture
 - Single-file design with explicit layers: state tracker, pool manager, widget builders, dialog controller, and selection handling.
