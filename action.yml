@@ -12,10 +12,6 @@ inputs:
   github-token:
     description: "GitHub token for API calls (defaults to github.token)."
     required: false
-  git-add:
-    description: "Stage the extracted LibEQOL folder with git add."
-    required: false
-    default: "false"
 
 outputs:
   tag:
@@ -83,7 +79,6 @@ runs:
         rm -f "${ZIP_PATH}"
 
     - name: Stage LibEQOL
-      if: ${{ inputs.git-add == 'true' }}
       shell: bash
       env:
         DESTINATION: ${{ inputs.destination }}
