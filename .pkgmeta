@@ -18,6 +18,7 @@ ignore:
   - CHANGELOG.md
   - README.md
   - examples/*
+  - action.yml
 
 manual-changelog:
   filename: CHANGELOG.md
