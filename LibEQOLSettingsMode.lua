@@ -1,4 +1,4 @@
-local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 5000001
+local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 5010004
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -188,26 +188,27 @@ function lib:SetDefaultRootName(name)
 	end
 end
 
-local function prefixTag(tag)
+local function prefixTag(tag, explicitPrefix)
 	if type(tag) ~= "string" then
 		return tag
 	end
-	local p = State.prefixSet and State.prefix
+	local p = explicitPrefix or (State.prefixSet and State.prefix)
 	if p and not tag:find(p, 1, true) then
 		return p .. tag
 	end
 	return tag
 end
 
-local function registerCategory(name, parent, sort, newTagID)
-	newTagID = prefixTag(newTagID)
+local function registerCategory(name, parent, sort, newTagID, prefixOverride)
+	local categoryPrefix = prefixOverride or (State.prefixSet and State.prefix) or nil
+	newTagID = prefixTag(newTagID, categoryPrefix)
 	if parent == nil then
 		local cat, layout = Settings.RegisterVerticalLayoutCategory(name)
 		Settings.RegisterAddOnCategory(cat)
 		cat:SetShouldSortAlphabetically(sort ~= false)
 		cat._LibEQOLNewTagID = newTagID
 		State.categoryTags[cat:GetID()] = newTagID
-		State.categoryPrefixes[cat:GetID()] = State.prefixSet and State.prefix
+		State.categoryPrefixes[cat:GetID()] = categoryPrefix
 		return cat, layout
 	end
 	local cat, layout = Settings.RegisterVerticalLayoutSubcategory(parent, name)
@@ -215,7 +216,7 @@ local function registerCategory(name, parent, sort, newTagID)
 	cat:SetShouldSortAlphabetically(sort ~= false)
 	cat._LibEQOLNewTagID = newTagID
 	State.categoryTags[cat:GetID()] = newTagID
-	State.categoryPrefixes[cat:GetID()] = State.prefixSet and State.prefix
+	State.categoryPrefixes[cat:GetID()] = categoryPrefix
 	return cat, layout
 end
 
@@ -320,18 +321,18 @@ local function addSearchTags(initializer, searchtags, text)
 	end
 end
 
-function lib:CreateRootCategory(name, sort, newTagID)
-	local cat, layout = registerCategory(name or State.rootName, nil, sort, newTagID)
+function lib:CreateRootCategory(name, sort, newTagID, prefix)
+	local cat, layout = registerCategory(name or State.rootName, nil, sort, newTagID, prefix)
 	State.rootCategory = cat
 	State.rootLayout = layout
 	return cat, layout
 end
 
-function lib:CreateCategory(parent, name, sort, newTagID)
+function lib:CreateCategory(parent, name, sort, newTagID, prefix)
 	if not parent then
 		parent = State.rootCategory or select(1, self:CreateRootCategory(State.rootName))
 	end
-	local cat, layout = registerCategory(name, parent, sort, newTagID)
+	local cat, layout = registerCategory(name, parent, sort, newTagID, prefix)
 	State.categories[name] = cat
 	return cat, layout
 end
