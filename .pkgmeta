@@ -15,6 +15,9 @@ ignore:
   - .vscode
   - README-curse.md
   - scripts/*
+  - CHANGELOG.md
+  - README.md
+  - examples/*
 
 manual-changelog:
   filename: CHANGELOG.md
