@@ -88,4 +88,5 @@ runs:
         set -euo pipefail
         git config user.name "${GIT_USER:-github-actions[bot]}"
         git config user.email "${GIT_EMAIL:-github-actions[bot]@users.noreply.github.com}"
-        git add "${DESTINATION%/}/LibEQOL"
+        libeqol_path="${DESTINATION%/}/LibEQOL"
+        git add -- "${libeqol_path}" ":(glob,exclude)${libeqol_path}/libs/LibStub/**"
