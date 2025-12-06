@@ -20,6 +20,10 @@ ignore:
   - examples/*
   - action.yml
 
+plain-copy:
+  - LibEQOLSettingsMode.lua
+  - LibEQOLSettingsTemplates.xml
+
 manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
