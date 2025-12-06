@@ -15,6 +15,19 @@ Full docs live at: https://github.com/R41z0r/LibEQOL/wiki
   <Include file="libs/LibEQOL/LibEQOL.xml" />
   ```
 
+## GitHub Action helper
+Use the composite action at `.github/actions/install-libeqol` to pull the latest release ZIP and unpack it into your addon during CI.
+
+```
+- name: Install LibEQOL
+  uses: R41z0r/LibEQOL/.github/actions/install-libeqol@main
+  with:
+    destination: EnhanceQoL/libs   # where LibEQOL/ should be extracted
+    git-add: true                  # optionally stage EnhanceQoL/libs/LibEQOL
+```
+
+Outputs: `tag` and `asset_url` from the resolved release.
+
 ## Architecture
 - Single-file design with explicit layers: state tracker, pool manager, widget builders, dialog controller, and selection handling.
 - Modules under `LibEQOL`: **LibEQOLEditMode** (shipping) and **LibEQOLSettingsMode** (shipping) share the core helpers while exposing separate APIs.
