@@ -89,4 +89,7 @@ runs:
         git config user.name "${GIT_USER:-github-actions[bot]}"
         git config user.email "${GIT_EMAIL:-github-actions[bot]@users.noreply.github.com}"
         libeqol_path="${DESTINATION%/}/LibEQOL"
-        git add -- "${libeqol_path}" ":(glob,exclude)${libeqol_path}/libs/LibStub/**"
+        git add -f -- "$libeqol_path"
+        if [ -d "$libeqol_path/libs/LibStub" ]; then
+          git restore --staged "$libeqol_path/libs/LibStub"
+        fi
