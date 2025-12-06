@@ -225,6 +225,36 @@ local function applyParentInitializer(element, parentInitializer, parentCheck)
 	end
 end
 
+local function applyModifyPredicate(initializer, data)
+	if not (initializer and data and data.isEnabled) then
+		return
+	end
+	if data.parentCheck then
+		return
+	end
+	if not initializer.AddModifyPredicate then
+		return
+	end
+
+	local predicate
+	if type(data.isEnabled) == "function" then
+		predicate = data.isEnabled
+	else
+		local enabled = data.isEnabled ~= false
+		predicate = function()
+			return enabled
+		end
+	end
+
+	initializer:AddModifyPredicate(function()
+		local ok, result = pcall(predicate)
+		if not ok then
+			return true
+		end
+		return result ~= false
+	end)
+end
+
 local function refreshSettingsLayout()
 	if SettingsInbound and SettingsInbound.RepairDisplay then
 		SettingsInbound.RepairDisplay()
@@ -348,6 +378,7 @@ function lib:CreateCheckbox(cat, data)
 	)
 	local element = Settings.CreateCheckbox(cat, setting, data.desc)
 	applyParentInitializer(element, data.parent, data.parentCheck)
+	applyModifyPredicate(element, data)
 	addSearchTags(element, data.searchtags, data.name or data.text)
 	applyExpandablePredicate(element, data)
 	State.elements[data.key] = element
@@ -373,6 +404,7 @@ function lib:CreateSlider(cat, data)
 	end
 	local element = Settings.CreateSlider(cat, setting, options, data.desc)
 	applyParentInitializer(element, data.parent, data.parentCheck)
+	applyModifyPredicate(element, data)
 	addSearchTags(element, data.searchtags, data.name or data.text)
 	applyExpandablePredicate(element, data)
 	State.elements[data.key] = element
@@ -421,6 +453,7 @@ function lib:CreateDropdown(cat, data)
 	end
 	local dropdown = Settings.CreateDropdown(cat, setting, optionsFunc, data.desc)
 	applyParentInitializer(dropdown, data.parent, data.parentCheck)
+	applyModifyPredicate(dropdown, data)
 	addSearchTags(dropdown, data.searchtags, data.name or data.text)
 	applyExpandablePredicate(dropdown, data)
 	State.elements[data.key] = dropdown
@@ -460,6 +493,7 @@ function lib:CreateSoundDropdown(cat, data)
 	initializer:SetSetting(setting)
 	addSearchTags(initializer, data.searchtags, data.name or data.text)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
+	applyModifyPredicate(initializer, data)
 	applyExpandablePredicate(initializer, data)
 	Settings.RegisterInitializer(cat, initializer)
 	State.elements[data.key] = initializer
@@ -480,6 +514,7 @@ function lib:CreateColorOverrides(cat, data)
 	-- addSearchTags(initializer, data.searchtags, data.name or data.text)
 	Settings.RegisterInitializer(cat, initializer)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
+	applyModifyPredicate(initializer, data)
 	applyExpandablePredicate(initializer, data)
 	State.elements[data.key or (data.name or "ColorOverrides")] = initializer
 	maybeAttachNotify(initializer.GetSetting and initializer:GetSetting(), data)
@@ -513,6 +548,7 @@ function lib:CreateMultiDropdown(cat, data)
 	initializer:SetSetting(setting)
 	addSearchTags(initializer, data.searchtags, data.name or data.text)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
+	applyModifyPredicate(initializer, data)
 	applyExpandablePredicate(initializer, data)
 	Settings.RegisterInitializer(cat, initializer)
 	State.elements[data.key] = initializer
@@ -624,6 +660,7 @@ function lib:CreateHeader(cat, text, extra)
 	local init = Settings.CreateElementInitializer("SettingsListSectionHeaderTemplate", { name = name })
 	addSearchTags(init, data.searchtags or name, name)
 	applyParentInitializer(init, data.parent, data.parentCheck)
+	applyModifyPredicate(init, data)
 	applyExpandablePredicate(init, data)
 	Settings.RegisterInitializer(cat, init)
 	return init
@@ -638,6 +675,7 @@ function lib:CreateText(cat, text, extra)
 	)
 	addSearchTags(init, data.searchtags or name, name)
 	applyParentInitializer(init, data.parent, data.parentCheck)
+	applyModifyPredicate(init, data)
 	applyExpandablePredicate(init, data)
 	Settings.RegisterInitializer(cat, init)
 	return init
@@ -649,6 +687,7 @@ function lib:CreateButton(cat, data)
 		CreateSettingsButtonInitializer("", data.text, data.click or data.func, data.desc, data.searchtags or false)
 	SettingsPanel:GetLayout(cat):AddInitializer(btn)
 	applyParentInitializer(btn, data.parent, data.parentCheck)
+	applyModifyPredicate(btn, data)
 	applyExpandablePredicate(btn, data)
 	State.elements[data.key or data.text] = btn
 	return btn
@@ -660,6 +699,7 @@ function lib:CreateKeybind(cat, data)
 		Settings.CreateElementInitializer("KeyBindingFrameBindingTemplate", { bindingIndex = data.bindingIndex })
 	addSearchTags(initializer, data.searchtags, data.name or data.text)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
+	applyModifyPredicate(initializer, data)
 	applyExpandablePredicate(initializer, data)
 	Settings.RegisterInitializer(cat, initializer)
 	State.elements[data.key or ("Binding_" .. tostring(data.bindingIndex))] = initializer
