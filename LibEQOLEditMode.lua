@@ -1,4 +1,4 @@
-local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 1000005
+local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 6010001
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -208,6 +208,7 @@ local CreateMinimalSliderFormatter = _G.CreateMinimalSliderFormatter
 local GetBuildInfo = _G.GetBuildInfo
 local PlaySound = _G.PlaySound
 local math = _G.math
+local EditModeMagnetismManager = _G.EditModeMagnetismManager
 local tostring = _G.tostring
 local type = _G.type
 local pairs = _G.pairs
@@ -484,6 +485,281 @@ local function isDragAllowed(frame)
 		return true
 	end
 	return predicate ~= false
+end
+
+local function isInCombat()
+	return InCombatLockdown and InCombatLockdown()
+end
+
+-- Magnetism helpers ---------------------------------------------------------------
+local function isFrameAnchoredTo(frame, target, visited)
+	if not (frame and target and frame.GetNumPoints) then
+		return false
+	end
+	visited = visited or {}
+	if visited[frame] then
+		return false
+	end
+	visited[frame] = true
+	for i = 1, frame:GetNumPoints() do
+		local _, relativeTo = frame:GetPoint(i)
+		if relativeTo then
+			if relativeTo == target or isFrameAnchoredTo(relativeTo, target, visited) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function ensureMagnetismAPI(frame, selection)
+	if frame._eqolHasMagnetismAPI or not EditModeMagnetismManager then
+		return
+	end
+	frame._eqolHasMagnetismAPI = true
+	frame.Selection = frame.Selection or selection
+
+	local SELECTION_PADDING = 2
+
+	if not frame.GetScaledSelectionCenter then
+		function frame:GetScaledSelectionCenter()
+			local cx, cy = self.Selection and self.Selection:GetCenter()
+			if not (cx and cy) then
+				cx, cy = self:GetCenter()
+			end
+			if not (cx and cy) then
+				cx, cy = 0, 0
+			end
+			local scale = self:GetScale() or 1
+			return cx * scale, cy * scale
+		end
+	end
+
+	if not frame.GetScaledCenter then
+		function frame:GetScaledCenter()
+			local cx, cy = self:GetCenter()
+			local scale = self:GetScale() or 1
+			return cx * scale, cy * scale
+		end
+	end
+
+	if not frame.GetScaledSelectionSides then
+		function frame:GetScaledSelectionSides()
+			local scale = self:GetScale() or 1
+			if self.Selection and self.Selection.GetRect then
+				local left, bottom, width, height = self.Selection:GetRect()
+				if left then
+					return left * scale, (left + width) * scale, bottom * scale, (bottom + height) * scale
+				end
+			end
+			local left, bottom, width, height = self:GetRect()
+			return (left or 0) * scale, ((left or 0) + (width or 0)) * scale, (bottom or 0) * scale,
+				((bottom or 0) + (height or 0)) * scale
+		end
+	end
+
+	if not frame.GetLeftOffset then
+		function frame:GetLeftOffset()
+			if self.Selection and self.Selection.GetPoint then
+				return select(4, self.Selection:GetPoint(1)) - SELECTION_PADDING
+			end
+			return 0
+		end
+	end
+
+	if not frame.GetRightOffset then
+		function frame:GetRightOffset()
+			if self.Selection and self.Selection.GetPoint then
+				return select(4, self.Selection:GetPoint(2)) + SELECTION_PADDING
+			end
+			return 0
+		end
+	end
+
+	if not frame.GetTopOffset then
+		function frame:GetTopOffset()
+			if self.Selection and self.Selection.GetPoint then
+				return select(5, self.Selection:GetPoint(1)) + SELECTION_PADDING
+			end
+			return 0
+		end
+	end
+
+	if not frame.GetBottomOffset then
+		function frame:GetBottomOffset()
+			if self.Selection and self.Selection.GetPoint then
+				return select(5, self.Selection:GetPoint(2)) - SELECTION_PADDING
+			end
+			return 0
+		end
+	end
+
+	if not frame.GetSelectionOffset then
+		function frame:GetSelectionOffset(point, forYOffset)
+			local offset
+			if point == "LEFT" then
+				offset = self:GetLeftOffset()
+			elseif point == "RIGHT" then
+				offset = self:GetRightOffset()
+			elseif point == "TOP" then
+				offset = self:GetTopOffset()
+			elseif point == "BOTTOM" then
+				offset = self:GetBottomOffset()
+			elseif point == "TOPLEFT" then
+				offset = forYOffset and self:GetTopOffset() or self:GetLeftOffset()
+			elseif point == "TOPRIGHT" then
+				offset = forYOffset and self:GetTopOffset() or self:GetRightOffset()
+			elseif point == "BOTTOMLEFT" then
+				offset = forYOffset and self:GetBottomOffset() or self:GetLeftOffset()
+			elseif point == "BOTTOMRIGHT" then
+				offset = forYOffset and self:GetBottomOffset() or self:GetRightOffset()
+			else
+				local selectionCenterX, selectionCenterY = self.Selection and self.Selection:GetCenter()
+				if not (selectionCenterX and selectionCenterY) then
+					selectionCenterX, selectionCenterY = self:GetCenter()
+				end
+				if not (selectionCenterX and selectionCenterY) then
+					selectionCenterX, selectionCenterY = 0, 0
+				end
+				local centerX, centerY = self:GetCenter()
+				if not (centerX and centerY) then
+					centerX, centerY = 0, 0
+				end
+				if forYOffset then
+					offset = selectionCenterY - centerY
+				else
+					offset = selectionCenterX - centerX
+				end
+			end
+			return offset * (self:GetScale() or 1)
+		end
+	end
+
+	if not frame.GetCombinedSelectionOffset then
+		function frame:GetCombinedSelectionOffset(frameInfo, forYOffset)
+			local offset
+			if frameInfo.frame.Selection then
+				offset = -self:GetSelectionOffset(frameInfo.point, forYOffset)
+					+ frameInfo.frame:GetSelectionOffset(frameInfo.relativePoint, forYOffset)
+					+ frameInfo.offset
+			else
+				offset = -self:GetSelectionOffset(frameInfo.point, forYOffset) + frameInfo.offset
+			end
+			return offset / (self:GetScale() or 1)
+		end
+	end
+
+	if not frame.GetCombinedCenterOffset then
+		function frame:GetCombinedCenterOffset(otherFrame)
+			local centerX, centerY = self:GetScaledCenter()
+			local frameCenterX, frameCenterY
+			if otherFrame.GetScaledCenter then
+				frameCenterX, frameCenterY = otherFrame:GetScaledCenter()
+			else
+				frameCenterX, frameCenterY = otherFrame:GetCenter()
+			end
+			local scale = self:GetScale() or 1
+			return (centerX - frameCenterX) / scale, (centerY - frameCenterY) / scale
+		end
+	end
+
+	if not frame.GetSnapOffsets then
+		function frame:GetSnapOffsets(frameInfo)
+			local offsetX, offsetY
+			if frameInfo.isCornerSnap then
+				offsetX = self:GetCombinedSelectionOffset(frameInfo, false)
+				offsetY = self:GetCombinedSelectionOffset(frameInfo, true)
+			else
+				offsetX, offsetY = self:GetCombinedCenterOffset(frameInfo.frame)
+				if frameInfo.isHorizontal then
+					offsetX = self:GetCombinedSelectionOffset(frameInfo, false)
+				else
+					offsetY = self:GetCombinedSelectionOffset(frameInfo, true)
+				end
+			end
+			return offsetX, offsetY
+		end
+	end
+
+	if not frame.SnapToFrame then
+		function frame:SnapToFrame(frameInfo)
+			local offsetX, offsetY = self:GetSnapOffsets(frameInfo)
+			self:ClearAllPoints()
+			self:SetPoint(frameInfo.point, frameInfo.frame, frameInfo.relativePoint, offsetX, offsetY)
+		end
+	end
+
+	if not frame.IsFrameAnchoredToMe then
+		function frame:IsFrameAnchoredToMe(other)
+			return isFrameAnchoredTo(other, self)
+		end
+	end
+
+	if not frame.IsToTheLeftOfFrame then
+		function frame:IsToTheLeftOfFrame(other)
+			local _, myRight = self:GetScaledSelectionSides()
+			local otherLeft = select(1, other:GetScaledSelectionSides())
+			return myRight < otherLeft
+		end
+	end
+
+	if not frame.IsToTheRightOfFrame then
+		function frame:IsToTheRightOfFrame(other)
+			local myLeft = select(1, self:GetScaledSelectionSides())
+			local otherRight = select(2, other:GetScaledSelectionSides())
+			return myLeft > otherRight
+		end
+	end
+
+	if not frame.IsAboveFrame then
+		function frame:IsAboveFrame(other)
+			local _, _, myBottom, myTop = self:GetScaledSelectionSides()
+			local _, _, otherBottom, otherTop = other:GetScaledSelectionSides()
+			return myBottom > otherTop
+		end
+	end
+
+	if not frame.IsBelowFrame then
+		function frame:IsBelowFrame(other)
+			local _, _, myBottom, myTop = self:GetScaledSelectionSides()
+			local _, _, otherBottom, otherTop = other:GetScaledSelectionSides()
+			return myTop < otherBottom
+		end
+	end
+
+	if not frame.IsVerticallyAlignedWithFrame then
+		function frame:IsVerticallyAlignedWithFrame(other)
+			local _, _, myBottom, myTop = self:GetScaledSelectionSides()
+			local _, _, otherBottom, otherTop = other:GetScaledSelectionSides()
+			return (myTop >= otherBottom) and (myBottom <= otherTop)
+		end
+	end
+
+	if not frame.IsHorizontallyAlignedWithFrame then
+		function frame:IsHorizontallyAlignedWithFrame(other)
+			local myLeft, myRight = self:GetScaledSelectionSides()
+			local otherLeft, otherRight = other:GetScaledSelectionSides()
+			return (myRight >= otherLeft) and (myLeft <= otherRight)
+		end
+	end
+
+	if not frame.GetFrameMagneticEligibility then
+		function frame:GetFrameMagneticEligibility(systemFrame)
+			if systemFrame == self then
+				return nil
+			end
+			if self:IsFrameAnchoredToMe(systemFrame) then
+				return nil
+			end
+			local myLeft, myRight, myBottom, myTop = self:GetScaledSelectionSides()
+			local otherLeft, otherRight, otherBottom, otherTop = systemFrame:GetScaledSelectionSides()
+			local horizontalEligible = (myTop >= otherBottom) and (myBottom <= otherTop)
+				and (myRight < otherLeft or myLeft > otherRight)
+			local verticalEligible = (myRight >= otherLeft) and (myLeft <= otherRight)
+				and (myBottom > otherTop or myTop < otherBottom)
+			return horizontalEligible, verticalEligible
+		end
+	end
 end
 
 -- Layout helpers ------------------------------------------------------------------
@@ -2495,10 +2771,6 @@ end
 -- Selection and movement -----------------------------------------------------------
 local Selection = {}
 
-local function isInCombat()
-	return InCombatLockdown and InCombatLockdown()
-end
-
 local function setPropagateKeyboardInputSafe(frame, propagate)
 	if not frame or not frame.SetPropagateKeyboardInput or isInCombat() or not lib.isEditing then
 		return
@@ -2624,16 +2896,25 @@ local function beginSelectionDrag(self)
 		return
 	end
 	self.parent:StartMoving()
+	if EditModeMagnetismManager and EditModeManagerFrame and EditModeManagerFrame.SetSnapPreviewFrame then
+		EditModeManagerFrame:SetSnapPreviewFrame(self.parent)
+	end
 end
 
 local function finishSelectionDrag(self)
 	local parent = self.parent
 	parent:StopMovingOrSizing()
+	if EditModeManagerFrame and EditModeManagerFrame.ClearSnapPreviewFrame then
+		EditModeManagerFrame:ClearSnapPreviewFrame()
+	end
 	if isInCombat() then
 		return
 	end
 	if not isDragAllowed(parent) then
 		return
+	end
+	if EditModeManagerFrame and EditModeManagerFrame.IsSnapEnabled and EditModeManagerFrame:IsSnapEnabled() and EditModeMagnetismManager then
+		EditModeMagnetismManager:ApplyMagnetism(parent)
 	end
 	local point, x, y = deriveAnchorAndOffset(parent)
 	if not point then
@@ -2891,6 +3172,8 @@ function lib:AddFrame(frame, callback, default)
 	end)
 	updateSelectionKeyboard(selection)
 	selection:Hide()
+
+	ensureMagnetismAPI(frame, selection)
 
 	selection.labelHidden = false
 	selection.overlayHidden = false
