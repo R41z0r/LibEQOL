@@ -1,4 +1,4 @@
-local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 6001000
+local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 6001001
 local ok, lib = pcall(LibStub, MODULE_MAJOR)
 if not ok or not lib then
 	return
@@ -42,8 +42,9 @@ local function CloneOption(option)
 	return clone
 end
 
-local function NormalizeOptions(list)
+local function NormalizeOptions(list, order)
 	if type(list) ~= "table" then return {} end
+	order = (type(order) == "table" and #order > 0 and order) or nil
 
 	local normalized = {}
 	local usesIndex = #list > 0
@@ -64,9 +65,29 @@ local function NormalizeOptions(list)
 		end
 	end
 
-	table.sort(normalized, function(a, b)
-		return tostring(a.label or a.value or "") < tostring(b.label or b.value or "")
-	end)
+	if order then
+		local lookup = {}
+		for _, entry in ipairs(normalized) do
+			lookup[entry.value] = entry
+		end
+		local ordered = {}
+		local used = {}
+		for _, key in ipairs(order) do
+			local entry = lookup[key]
+			if entry and not used[entry] then
+				table.insert(ordered, entry)
+				used[entry] = true
+			end
+		end
+		for _, entry in ipairs(normalized) do
+			if not used[entry] then table.insert(ordered, entry) end
+		end
+		normalized = ordered
+	else
+		table.sort(normalized, function(a, b)
+			return tostring(a.label or a.value or "") < tostring(b.label or b.value or "")
+		end)
+	end
 
 	return normalized
 end
@@ -247,7 +268,7 @@ function LibEQOL_SoundDropdownMixin:GetSoundEntries()
 		list = self.options
 	end
 
-	if list then return NormalizeOptions(list) end
+	if list then return NormalizeOptions(list, self.data and self.data.order) end
 
 	local entries = {}
 	if LSM then

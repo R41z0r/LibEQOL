@@ -1,4 +1,4 @@
-local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 6001000
+local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 6001001
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -438,21 +438,34 @@ function lib:CreateDropdown(cat, data)
 	)
 	local function optionsFunc()
 		local container = Settings.CreateControlTextContainer()
-		local list = data.values
-		if data.optionfunc then
-			local ok, result = pcall(data.optionfunc)
-			if ok and type(result) == "table" then
-				list = result
+			local list = data.values
+			if data.optionfunc then
+				local ok, result = pcall(data.optionfunc)
+				if ok and type(result) == "table" then
+					list = result
+				end
 			end
-		end
-		if type(list) == "table" then
-			for key, value in pairs(list) do
-				container:Add(key, value)
+			if type(list) == "table" then
+				local orderedKeys = type(data.order) == "table" and data.order
+				local seen = nil
+				if orderedKeys then
+					seen = {}
+					for _, key in ipairs(orderedKeys) do
+						if key ~= "_order" and list[key] ~= nil then
+							container:Add(key, list[key])
+							seen[key] = true
+						end
+					end
+				end
+				for key, value in pairs(list) do
+					if key ~= "_order" and (not seen or not seen[key]) then
+						container:Add(key, value)
+					end
+				end
 			end
+			return container:GetData()
 		end
-		return container:GetData()
-	end
-	local dropdown = Settings.CreateDropdown(cat, setting, optionsFunc, data.desc)
+		local dropdown = Settings.CreateDropdown(cat, setting, optionsFunc, data.desc)
 	applyParentInitializer(dropdown, data.parent, data.parentCheck)
 	applyModifyPredicate(dropdown, data)
 	addSearchTags(dropdown, data.searchtags, data.name or data.text)
@@ -473,24 +486,25 @@ function lib:CreateSoundDropdown(cat, data)
 		data.get,
 		data.set,
 		data
-	)
-	local initializer = Settings.CreateElementInitializer("LibEQOL@project-abbreviated-hash@_SoundDropdownTemplate", {
-		setting = setting,
-		options = data.values or data.options,
-		optionfunc = data.optionfunc,
-		callback = data.callback,
-		soundResolver = data.soundResolver,
-		previewSoundFunc = data.previewSoundFunc,
-		playbackChannel = data.playbackChannel,
-		getPlaybackChannel = data.getPlaybackChannel,
+		)
+		local initializer = Settings.CreateElementInitializer("LibEQOL@project-abbreviated-hash@_SoundDropdownTemplate", {
+			setting = setting,
+			options = data.values or data.options,
+			optionfunc = data.optionfunc,
+			order = data.order,
+			callback = data.callback,
+			soundResolver = data.soundResolver,
+			previewSoundFunc = data.previewSoundFunc,
+			playbackChannel = data.playbackChannel,
+			getPlaybackChannel = data.getPlaybackChannel,
 		placeholderText = data.placeholderText,
 		previewTooltip = data.previewTooltip,
 		name = data.name or data.text or data.key,
 		menuHeight = data.menuHeight,
-		frameWidth = data.frameWidth,
-		frameHeight = data.frameHeight,
-		parentCheck = data.parentCheck,
-	})
+			frameWidth = data.frameWidth,
+			frameHeight = data.frameHeight,
+			parentCheck = data.parentCheck,
+		})
 	initializer:SetSetting(setting)
 	addSearchTags(initializer, data.searchtags, data.name or data.text)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
@@ -511,6 +525,7 @@ function lib:CreateColorOverrides(cat, data)
 		setColor = data.setColor,
 		getDefaultColor = data.getDefaultColor,
 		parentCheck = data.parentCheck,
+		colorizeLabel = data.colorizeLabel or data.colorizeText,
 	})
 	-- addSearchTags(initializer, data.searchtags, data.name or data.text)
 	Settings.RegisterInitializer(cat, initializer)
@@ -540,6 +555,7 @@ function lib:CreateMultiDropdown(cat, data)
 		label = data.name or data.text or data.key,
 		options = data.values,
 		optionfunc = data.optionfunc,
+		order = data.order,
 		isSelectedFunc = data.isSelected,
 		setSelectedFunc = data.setSelected,
 		getSelection = data.getSelection or data.get,

@@ -1,4 +1,4 @@
-local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 6001000
+local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 6001001
 local _, lib = pcall(LibStub, MODULE_MAJOR)
 if not lib then
 	return
@@ -104,11 +104,30 @@ function LibEQOL_MultiDropdownMixin:SetOptions(list)
 			table.insert(normalized, self:CloneOption(option))
 		end
 	else
+		local orderedKeys = self.optionOrder
+		local seen = nil
+		if orderedKeys then
+			seen = {}
+			for _, key in ipairs(orderedKeys) do
+				if key ~= "_order" and list[key] ~= nil then
+					local option = list[key]
+					if type(option) == "table" then
+						table.insert(normalized, self:CloneOption(option))
+					else
+						table.insert(normalized, self:CloneOption({ value = key, text = option }))
+					end
+					seen[key] = true
+				end
+			end
+		end
+
 		for key, option in pairs(list) do
-			if type(option) == "table" then
-				table.insert(normalized, self:CloneOption(option))
-			else
-				table.insert(normalized, self:CloneOption({ value = key, text = option }))
+			if key ~= "_order" and (not seen or not seen[key]) then
+				if type(option) == "table" then
+					table.insert(normalized, self:CloneOption(option))
+				else
+					table.insert(normalized, self:CloneOption({ value = key, text = option }))
+				end
 			end
 		end
 	end
@@ -141,6 +160,7 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	self.subvar = data.subvar
 	self.db = data.db
 	self.optionfunc = data.optionfunc
+	self.optionOrder = type(data.order) == "table" and data.order or nil
 	self.isSelectedFunc = data.isSelectedFunc or data.isSelected
 	self.setSelectedFunc = data.setSelectedFunc or data.setSelected
 	self.getSelectionFunc = data.getSelection or data.get
