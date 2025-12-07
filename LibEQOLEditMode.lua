@@ -491,6 +491,18 @@ local function isInCombat()
 	return InCombatLockdown and InCombatLockdown()
 end
 
+local function roundOffset(val)
+	local n = tonumber(val) or 0
+	if math.abs(n) < 0.001 then
+		return 0
+	end
+	if n >= 0 then
+		return math.floor(n + 0.5)
+	else
+		return math.ceil(n - 0.5)
+	end
+end
+
 -- Magnetism helpers ---------------------------------------------------------------
 local function isFrameAnchoredTo(frame, target, visited)
 	if not (frame and target and frame.GetNumPoints) then
@@ -2669,7 +2681,7 @@ function Dialog:ResetPosition()
 	local pos = lib:GetFrameDefaultPosition(parent) or { point = "CENTER", x = 0, y = 0 }
 	parent:ClearAllPoints()
 	parent:SetPoint(pos.point, pos.x, pos.y)
-	Internal:TriggerCallback(parent, pos.point, pos.x, pos.y)
+	Internal:TriggerCallback(parent, pos.point, roundOffset(pos.x), roundOffset(pos.y))
 end
 
 function Internal:CreateDialog()
@@ -2851,7 +2863,7 @@ local function adjustPosition(frame, dx, dy)
 	y = (y or 0) + dy / scale
 	frame:ClearAllPoints()
 	frame:SetPoint(point, relativeTo or UIParent, relativePoint or point, x, y)
-	Internal:TriggerCallback(frame, point, x, y)
+	Internal:TriggerCallback(frame, point, roundOffset(x), roundOffset(y))
 end
 
 local function resetSelectionIndicators()
@@ -2922,7 +2934,7 @@ local function finishSelectionDrag(self)
 	end
 	parent:ClearAllPoints()
 	parent:SetPoint(point, x, y)
-	Internal:TriggerCallback(parent, point, x, y)
+	Internal:TriggerCallback(parent, point, roundOffset(x), roundOffset(y))
 end
 
 -- Overlap chooser ---------------------------------------------------------------
