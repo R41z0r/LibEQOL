@@ -20,6 +20,62 @@ local TextureKitConstants = _G.TextureKitConstants
 local HIGHLIGHT_FONT_COLOR = _G.HIGHLIGHT_FONT_COLOR
 local DISABLED_FONT_COLOR = _G.DISABLED_FONT_COLOR
 
+local function normalizeSelectionMap(selection)
+	local map = {}
+	if type(selection) ~= "table" then
+		return map
+	end
+	if #selection > 0 then
+		for _, value in ipairs(selection) do
+			if value ~= nil then
+				map[value] = true
+			end
+		end
+	else
+		for key, value in pairs(selection) do
+			if value then
+				map[key] = true
+			end
+		end
+	end
+	return map
+end
+
+local function sortMixedKeys(keys)
+	table.sort(keys, function(a, b)
+		local ta, tb = type(a), type(b)
+		if ta == tb then
+			if ta == "number" then
+				return a < b
+			end
+			if ta == "string" then
+				return a < b
+			end
+			return tostring(a) < tostring(b)
+		end
+		if ta == "number" then
+			return true
+		end
+		if tb == "number" then
+			return false
+		end
+		return tostring(a) < tostring(b)
+	end)
+	return keys
+end
+
+local function serializeSelection(selection)
+	local map = normalizeSelectionMap(selection)
+	local keys = {}
+	for key, value in pairs(map) do
+		if value then
+			keys[#keys + 1] = key
+		end
+	end
+	sortMixedKeys(keys)
+	return table.concat(keys, ",")
+end
+
 local function isSearchActive()
 	return SettingsPanel and SettingsPanel.SearchBox and SettingsPanel.SearchBox:HasText()
 end
@@ -539,14 +595,29 @@ end
 
 function lib:CreateMultiDropdown(cat, data)
 	assert(cat and data and data.key, "category and data.key required")
+	local defaultSelection = normalizeSelectionMap(data.defaultSelection or data.default)
+	local defaultSerialized = serializeSelection(defaultSelection)
 	local setting = registerSetting(
 		cat,
 		data.key,
 		Settings.VarType.String,
 		data.name or data.text or data.key,
-		"",
+		defaultSerialized,
 		function()
-			return ""
+			-- Reflect current selection in the backing Setting for reset tracking
+			local selection
+			if data.getSelection then
+				local ok, result = pcall(data.getSelection)
+				if ok then
+					selection = result
+				end
+			elseif data.get then
+				local ok, result = pcall(data.get)
+				if ok then
+					selection = result
+				end
+			end
+			return serializeSelection(selection)
 		end,
 		function() end,
 		data
@@ -556,6 +627,9 @@ function lib:CreateMultiDropdown(cat, data)
 		options = data.values,
 		optionfunc = data.optionfunc,
 		order = data.order,
+		defaultSelection = defaultSelection,
+		categoryID = cat and cat.GetID and cat:GetID(),
+		hideSummary = data.hideSummary,
 		isSelectedFunc = data.isSelected,
 		setSelectedFunc = data.setSelected,
 		getSelection = data.getSelection or data.get,
