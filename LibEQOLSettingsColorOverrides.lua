@@ -130,13 +130,16 @@ function LibEQOL_ColorOverridesMixin:ApplyTextColor(frame)
 		end
 		return
 	end
-	local r, g, b = self.getColor and self.getColor(frame.data.key)
-	if not (r and g and b) and frame.ColorSwatch and frame.ColorSwatch.Color then
-		r, g, b = frame.ColorSwatch.Color:GetVertexColor()
+		local r, g, b = 0, 0, 0
+		if self.getColor then
+			r, g, b = self.getColor(frame.data.key)
+		end
+		if not (r and g and b) and frame.ColorSwatch and frame.ColorSwatch.Color then
+			r, g, b = frame.ColorSwatch.Color:GetVertexColor()
+		end
+		r, g, b = r or 1, g or 1, b or 1
+		frame.Text:SetTextColor(r, g, b, 1)
 	end
-	r, g, b = r or 1, g or 1, b or 1
-	frame.Text:SetTextColor(r, g, b, 1)
-end
 
 function LibEQOL_ColorOverridesMixin:RefreshRow(frame)
 	if not (self.getColor and frame.ColorSwatch and frame.ColorSwatch.Color) then

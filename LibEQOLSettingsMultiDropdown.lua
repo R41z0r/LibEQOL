@@ -68,6 +68,13 @@ function LibEQOL_MultiDropdownMixin:OnLoad()
 	self:EnsureSummaryAnchors()
 end
 
+-- Guard against missing element data while defaulting/resetting
+function LibEQOL_MultiDropdownMixin:GetSetting()
+	if self.initializer and self.initializer.GetSetting then return self.initializer:GetSetting() end
+	if self.data and self.data.GetSetting then return self.data:GetSetting() end
+	return nil
+end
+
 function LibEQOL_MultiDropdownMixin:CloneOption(option)
 	local cloned = {}
 	if type(option) == "table" then
@@ -150,6 +157,7 @@ function LibEQOL_MultiDropdownMixin:GetOptions()
 end
 
 function LibEQOL_MultiDropdownMixin:Init(initializer)
+	if not initializer or not initializer.GetData then return end
 	-- Unsere eigenen Daten zuerst setzen
 	self.initializer = initializer
 
@@ -176,6 +184,7 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	end
 	self.hideSummary = data.hideSummary
 	self.callback = data.callback
+	self.data = data
 
 	self:SetOptions(data.options or data.values or {})
 
