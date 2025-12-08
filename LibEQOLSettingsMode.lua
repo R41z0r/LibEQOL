@@ -583,6 +583,23 @@ function lib:CreateColorOverrides(cat, data)
 		parentCheck = data.parentCheck,
 		colorizeLabel = data.colorizeLabel or data.colorizeText,
 	})
+	function initializer:GetExtent()
+		if data.height then
+			return data.height
+		end
+		local count = #(data.entries or {})
+		local rowHeight = data.rowHeight or 20
+		local spacing = data.spacing or 10 -- template default
+		local padding = data.basePadding or 16
+		local height = padding * 2
+		if count > 0 then
+			height = height + (count * rowHeight) + math.max(0, count - 1) * spacing
+		end
+		if data.minHeight then
+			height = math.max(height, data.minHeight)
+		end
+		return height
+	end
 	-- addSearchTags(initializer, data.searchtags, data.name or data.text)
 	Settings.RegisterInitializer(cat, initializer)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
