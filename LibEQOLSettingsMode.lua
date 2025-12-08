@@ -582,6 +582,7 @@ function lib:CreateColorOverrides(cat, data)
 		getDefaultColor = data.getDefaultColor,
 		parentCheck = data.parentCheck,
 		colorizeLabel = data.colorizeLabel or data.colorizeText,
+		hasOpacity = data.hasOpacity or data.hasAlpha,
 	})
 	function initializer:GetExtent()
 		if data.height then
