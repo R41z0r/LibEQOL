@@ -172,6 +172,7 @@ function LibEQOL_SoundDropdownMixin:Init(initializer)
 	self:SetupDropdown()
 	self:UpdateDropdownText()
 	self:RegisterSettingListener()
+	self:EvaluateState()
 end
 
 function LibEQOL_SoundDropdownMixin:GetSetting()
@@ -376,6 +377,9 @@ function LibEQOL_SoundDropdownMixin:EvaluateState()
 		else
 			self.soundDropdown:Disable()
 		end
+	end
+	if self.Text then
+		self.Text:SetFontObject(enabled and "GameFontNormal" or "GameFontDisable")
 	end
 end
 

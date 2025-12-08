@@ -7,6 +7,7 @@ Added:
 - Settings: Top-level `order = { ... }` for map-based dropdowns (single, multi, sound) to control option ordering.
 - Settings: `defaultSelection` for multi dropdowns so “Reset to default” restores a defined selection (defaults to empty).
 - Settings: Color overrides can tint labels via `colorizeLabel`/`colorizeText` (doc’d).
+- Settings: Sound dropdown honors disabled state on init and greys out its label when parent checks disable it.
 
 Fixed:
 - Multi dropdown `hideSummary` now respected again.
