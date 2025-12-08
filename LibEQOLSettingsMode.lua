@@ -584,7 +584,7 @@ function lib:CreateColorOverrides(cat, data)
 		colorizeLabel = data.colorizeLabel or data.colorizeText,
 		hasOpacity = data.hasOpacity or data.hasAlpha,
 	})
-	function initializer:GetExtent()
+	initializer.GetExtent = function(_)
 		if data.height then
 			return data.height
 		end
