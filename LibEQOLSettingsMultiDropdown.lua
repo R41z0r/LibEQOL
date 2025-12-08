@@ -1,4 +1,4 @@
-local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 5010001
+local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 6001001
 local _, lib = pcall(LibStub, MODULE_MAJOR)
 if not lib then
 	return
@@ -104,11 +104,30 @@ function LibEQOL_MultiDropdownMixin:SetOptions(list)
 			table.insert(normalized, self:CloneOption(option))
 		end
 	else
+		local orderedKeys = self.optionOrder
+		local seen = nil
+		if orderedKeys then
+			seen = {}
+			for _, key in ipairs(orderedKeys) do
+				if key ~= "_order" and list[key] ~= nil then
+					local option = list[key]
+					if type(option) == "table" then
+						table.insert(normalized, self:CloneOption(option))
+					else
+						table.insert(normalized, self:CloneOption({ value = key, text = option }))
+					end
+					seen[key] = true
+				end
+			end
+		end
+
 		for key, option in pairs(list) do
-			if type(option) == "table" then
-				table.insert(normalized, self:CloneOption(option))
-			else
-				table.insert(normalized, self:CloneOption({ value = key, text = option }))
+			if key ~= "_order" and (not seen or not seen[key]) then
+				if type(option) == "table" then
+					table.insert(normalized, self:CloneOption(option))
+				else
+					table.insert(normalized, self:CloneOption({ value = key, text = option }))
+				end
 			end
 		end
 	end
@@ -141,11 +160,14 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	self.subvar = data.subvar
 	self.db = data.db
 	self.optionfunc = data.optionfunc
+	self.optionOrder = type(data.order) == "table" and data.order or nil
 	self.isSelectedFunc = data.isSelectedFunc or data.isSelected
 	self.setSelectedFunc = data.setSelectedFunc or data.setSelected
 	self.getSelectionFunc = data.getSelection or data.get
 	self.setSelectionFunc = data.setSelection or data.set
 	self.summaryFunc = data.summaryFunc or data.summary
+	self.defaultSelection = self.defaultSelection or NormalizeSelection(data.defaultSelection or data.default)
+	self.categoryID = self.categoryID or data.categoryID
 	-- Default caption behaviour for empty state
 	if data.customText ~= nil then
 		self.customDefaultText = data.customText
@@ -159,6 +181,7 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 
 	-- Jetzt Basis-Init, das InitDropdown + EvaluateState ruft (unsere überschriebenen Versionen)
 	SettingsDropdownControlMixin.Init(self, initializer)
+	self:EnsureDefaultCallbacks()
 
 	-- Label ggf. anpassen
 	if data.label then self.Text:SetText(data.label) end
@@ -317,6 +340,39 @@ function LibEQOL_MultiDropdownMixin:RefreshSummary()
 	summary = summary or self:FormatSummaryText(texts)
 	self.Summary:SetText(summary)
 	self.Summary:Show()
+end
+
+function LibEQOL_MultiDropdownMixin:ApplyDefaultSelection()
+	local selection = CopySelection(self.defaultSelection or {})
+	if self.setSelectionFunc then
+		pcall(self.setSelectionFunc, selection)
+	else
+		self:ApplyLegacySelection(selection)
+	end
+	self.selectionCache = nil
+	self:RefreshSummary()
+	self:SyncSetting(selection)
+end
+
+function LibEQOL_MultiDropdownMixin:EnsureDefaultCallbacks()
+	if self.defaultCallbacksRegistered then
+		return
+	end
+	self.defaultCallbacksRegistered = true
+
+	EventRegistry:RegisterCallback("Settings.Defaulted", function(_, setting)
+		if setting == self:GetSetting() then
+			self:ApplyDefaultSelection()
+		end
+	end, self)
+	EventRegistry:RegisterCallback("Settings.CategoryDefaulted", function(_, category)
+		if not self.categoryID or not category or not category.GetID then
+			return
+		end
+		if category:GetID() == self.categoryID then
+			self:ApplyDefaultSelection()
+		end
+	end, self)
 end
 
 function LibEQOL_MultiDropdownMixin:EnsureSummaryAnchors()

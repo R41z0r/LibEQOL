@@ -1,4 +1,4 @@
-local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 2000001
+local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 6010001
 local ok, lib = pcall(LibStub, MODULE_MAJOR)
 if not ok or not lib then
 	return
@@ -44,6 +44,7 @@ function LibEQOL_ColorOverridesMixin:Init(initializer)
 	self.fixedHeight = initializer.data.height
 	self.fixedSpacing = initializer.data.spacing
 	self.parentCheck = initializer.data.parentCheck
+	self.colorizeLabel = initializer.data.colorizeLabel or initializer.data.colorizeText
 
 	if self.Header then
 		self.Header:SetText(self.headerText)
@@ -102,13 +103,39 @@ end
 function LibEQOL_ColorOverridesMixin:SetupRow(frame, entry)
 	frame.data = entry
 	if frame.Text then
+		local r, g, b = frame.Text:GetTextColor()
+		frame._defaultTextColor = { r, g, b }
 		frame.Text:SetText(entry.label or entry.key or "?")
 	end
+	frame.colorizeLabel = self.colorizeLabel
 	if frame.ColorSwatch then
 		frame.ColorSwatch:SetScript("OnClick", function()
 			self:OpenColorPicker(frame)
 		end)
 	end
+	self:ApplyTextColor(frame)
+end
+
+function LibEQOL_ColorOverridesMixin:ApplyTextColor(frame)
+	if not frame or not frame.Text then
+		return
+	end
+	local shouldColorize = frame.colorizeLabel
+	if shouldColorize == nil then
+		shouldColorize = self.colorizeLabel
+	end
+	if not shouldColorize then
+		if frame._defaultTextColor then
+			frame.Text:SetTextColor(frame._defaultTextColor[1], frame._defaultTextColor[2], frame._defaultTextColor[3], 1)
+		end
+		return
+	end
+	local r, g, b = self.getColor and self.getColor(frame.data.key)
+	if not (r and g and b) and frame.ColorSwatch and frame.ColorSwatch.Color then
+		r, g, b = frame.ColorSwatch.Color:GetVertexColor()
+	end
+	r, g, b = r or 1, g or 1, b or 1
+	frame.Text:SetTextColor(r, g, b, 1)
 end
 
 function LibEQOL_ColorOverridesMixin:RefreshRow(frame)
@@ -118,6 +145,7 @@ function LibEQOL_ColorOverridesMixin:RefreshRow(frame)
 	local r, g, b = self.getColor(frame.data.key)
 	r, g, b = r or 1, g or 1, b or 1
 	frame.ColorSwatch.Color:SetVertexColor(r, g, b)
+	self:ApplyTextColor(frame)
 end
 
 function LibEQOL_ColorOverridesMixin:RefreshAll()
@@ -186,5 +214,6 @@ function LibEQOL_ColorOverridesMixin:EvaluateState()
 		if frame.Text then
 			frame.Text:SetFontObject(enabled and GameFontNormalSmall or GameFontDisableSmall)
 		end
+		self:ApplyTextColor(frame)
 	end
 end

@@ -1,4 +1,4 @@
-local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 6010001
+local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 6001001
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -535,8 +535,11 @@ local function ensureMagnetismAPI(frame, selection)
 
 	if not frame.GetScaledSelectionCenter then
 		function frame:GetScaledSelectionCenter()
-			local cx, cy = self.Selection and self.Selection:GetCenter()
-			if not (cx and cy) then
+			local cx, cy = 0, 0
+			if self.Selection and self.Selection.GetCenter then
+				cx, cy = self.Selection:GetCenter()
+			end
+			if not (cx and cy) and self.GetCenter then
 				cx, cy = self:GetCenter()
 			end
 			if not (cx and cy) then
@@ -626,14 +629,20 @@ local function ensureMagnetismAPI(frame, selection)
 			elseif point == "BOTTOMRIGHT" then
 				offset = forYOffset and self:GetBottomOffset() or self:GetRightOffset()
 			else
-				local selectionCenterX, selectionCenterY = self.Selection and self.Selection:GetCenter()
-				if not (selectionCenterX and selectionCenterY) then
+				local selectionCenterX, selectionCenterY = 0, 0
+				if self.Selection and self.Selection.GetCenter then
+					selectionCenterX, selectionCenterY = self.Selection:GetCenter()
+				end
+				if not (selectionCenterX and selectionCenterY) and self.GetCenter then
 					selectionCenterX, selectionCenterY = self:GetCenter()
 				end
 				if not (selectionCenterX and selectionCenterY) then
 					selectionCenterX, selectionCenterY = 0, 0
 				end
-				local centerX, centerY = self:GetCenter()
+				local centerX, centerY = 0, 0
+				if self.GetCenter then
+					centerX, centerY = self:GetCenter()
+				end
 				if not (centerX and centerY) then
 					centerX, centerY = 0, 0
 				end
@@ -1301,6 +1310,9 @@ local function buildDropdown()
 
 		if data.generator then
 			self.Dropdown:SetupMenu(function(owner, rootDescription)
+				if data.height then
+					rootDescription:SetScrollMode(data.height)
+				end
 				pcall(data.generator, owner, rootDescription, data)
 			end)
 		elseif data.values then
@@ -1969,6 +1981,9 @@ local function buildDropdownColor()
 
 		if data.generator then
 			self.Dropdown:SetupMenu(function(owner, rootDescription)
+				if data.height then
+					rootDescription:SetScrollMode(data.height)
+				end
 				pcall(data.generator, owner, rootDescription, data)
 			end)
 		elseif data.values then

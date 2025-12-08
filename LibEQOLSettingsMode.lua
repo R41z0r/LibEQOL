@@ -1,4 +1,4 @@
-local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 5010004
+local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 6001001
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -19,6 +19,62 @@ local CreateSettingsExpandableSectionInitializer = _G.CreateSettingsExpandableSe
 local TextureKitConstants = _G.TextureKitConstants
 local HIGHLIGHT_FONT_COLOR = _G.HIGHLIGHT_FONT_COLOR
 local DISABLED_FONT_COLOR = _G.DISABLED_FONT_COLOR
+
+local function normalizeSelectionMap(selection)
+	local map = {}
+	if type(selection) ~= "table" then
+		return map
+	end
+	if #selection > 0 then
+		for _, value in ipairs(selection) do
+			if value ~= nil then
+				map[value] = true
+			end
+		end
+	else
+		for key, value in pairs(selection) do
+			if value then
+				map[key] = true
+			end
+		end
+	end
+	return map
+end
+
+local function sortMixedKeys(keys)
+	table.sort(keys, function(a, b)
+		local ta, tb = type(a), type(b)
+		if ta == tb then
+			if ta == "number" then
+				return a < b
+			end
+			if ta == "string" then
+				return a < b
+			end
+			return tostring(a) < tostring(b)
+		end
+		if ta == "number" then
+			return true
+		end
+		if tb == "number" then
+			return false
+		end
+		return tostring(a) < tostring(b)
+	end)
+	return keys
+end
+
+local function serializeSelection(selection)
+	local map = normalizeSelectionMap(selection)
+	local keys = {}
+	for key, value in pairs(map) do
+		if value then
+			keys[#keys + 1] = key
+		end
+	end
+	sortMixedKeys(keys)
+	return table.concat(keys, ",")
+end
 
 local function isSearchActive()
 	return SettingsPanel and SettingsPanel.SearchBox and SettingsPanel.SearchBox:HasText()
@@ -438,21 +494,34 @@ function lib:CreateDropdown(cat, data)
 	)
 	local function optionsFunc()
 		local container = Settings.CreateControlTextContainer()
-		local list = data.values
-		if data.optionfunc then
-			local ok, result = pcall(data.optionfunc)
-			if ok and type(result) == "table" then
-				list = result
+			local list = data.values
+			if data.optionfunc then
+				local ok, result = pcall(data.optionfunc)
+				if ok and type(result) == "table" then
+					list = result
+				end
 			end
-		end
-		if type(list) == "table" then
-			for key, value in pairs(list) do
-				container:Add(key, value)
+			if type(list) == "table" then
+				local orderedKeys = type(data.order) == "table" and data.order
+				local seen = nil
+				if orderedKeys then
+					seen = {}
+					for _, key in ipairs(orderedKeys) do
+						if key ~= "_order" and list[key] ~= nil then
+							container:Add(key, list[key])
+							seen[key] = true
+						end
+					end
+				end
+				for key, value in pairs(list) do
+					if key ~= "_order" and (not seen or not seen[key]) then
+						container:Add(key, value)
+					end
+				end
 			end
+			return container:GetData()
 		end
-		return container:GetData()
-	end
-	local dropdown = Settings.CreateDropdown(cat, setting, optionsFunc, data.desc)
+		local dropdown = Settings.CreateDropdown(cat, setting, optionsFunc, data.desc)
 	applyParentInitializer(dropdown, data.parent, data.parentCheck)
 	applyModifyPredicate(dropdown, data)
 	addSearchTags(dropdown, data.searchtags, data.name or data.text)
@@ -473,24 +542,25 @@ function lib:CreateSoundDropdown(cat, data)
 		data.get,
 		data.set,
 		data
-	)
-	local initializer = Settings.CreateElementInitializer("LibEQOL@project-abbreviated-hash@_SoundDropdownTemplate", {
-		setting = setting,
-		options = data.values or data.options,
-		optionfunc = data.optionfunc,
-		callback = data.callback,
-		soundResolver = data.soundResolver,
-		previewSoundFunc = data.previewSoundFunc,
-		playbackChannel = data.playbackChannel,
-		getPlaybackChannel = data.getPlaybackChannel,
+		)
+		local initializer = Settings.CreateElementInitializer("LibEQOL@project-abbreviated-hash@_SoundDropdownTemplate", {
+			setting = setting,
+			options = data.values or data.options,
+			optionfunc = data.optionfunc,
+			order = data.order,
+			callback = data.callback,
+			soundResolver = data.soundResolver,
+			previewSoundFunc = data.previewSoundFunc,
+			playbackChannel = data.playbackChannel,
+			getPlaybackChannel = data.getPlaybackChannel,
 		placeholderText = data.placeholderText,
 		previewTooltip = data.previewTooltip,
 		name = data.name or data.text or data.key,
 		menuHeight = data.menuHeight,
-		frameWidth = data.frameWidth,
-		frameHeight = data.frameHeight,
-		parentCheck = data.parentCheck,
-	})
+			frameWidth = data.frameWidth,
+			frameHeight = data.frameHeight,
+			parentCheck = data.parentCheck,
+		})
 	initializer:SetSetting(setting)
 	addSearchTags(initializer, data.searchtags, data.name or data.text)
 	applyParentInitializer(initializer, data.parent, data.parentCheck)
@@ -511,6 +581,7 @@ function lib:CreateColorOverrides(cat, data)
 		setColor = data.setColor,
 		getDefaultColor = data.getDefaultColor,
 		parentCheck = data.parentCheck,
+		colorizeLabel = data.colorizeLabel or data.colorizeText,
 	})
 	-- addSearchTags(initializer, data.searchtags, data.name or data.text)
 	Settings.RegisterInitializer(cat, initializer)
@@ -524,14 +595,29 @@ end
 
 function lib:CreateMultiDropdown(cat, data)
 	assert(cat and data and data.key, "category and data.key required")
+	local defaultSelection = normalizeSelectionMap(data.defaultSelection or data.default)
+	local defaultSerialized = serializeSelection(defaultSelection)
 	local setting = registerSetting(
 		cat,
 		data.key,
 		Settings.VarType.String,
 		data.name or data.text or data.key,
-		"",
+		defaultSerialized,
 		function()
-			return ""
+			-- Reflect current selection in the backing Setting for reset tracking
+			local selection
+			if data.getSelection then
+				local ok, result = pcall(data.getSelection)
+				if ok then
+					selection = result
+				end
+			elseif data.get then
+				local ok, result = pcall(data.get)
+				if ok then
+					selection = result
+				end
+			end
+			return serializeSelection(selection)
 		end,
 		function() end,
 		data
@@ -540,6 +626,10 @@ function lib:CreateMultiDropdown(cat, data)
 		label = data.name or data.text or data.key,
 		options = data.values,
 		optionfunc = data.optionfunc,
+		order = data.order,
+		defaultSelection = defaultSelection,
+		categoryID = cat and cat.GetID and cat:GetID(),
+		hideSummary = data.hideSummary,
 		isSelectedFunc = data.isSelected,
 		setSelectedFunc = data.setSelected,
 		getSelection = data.getSelection or data.get,
