@@ -691,6 +691,88 @@ function lib:CreateCheckboxDropdown(cat, data)
 	return initializer, cbSetting, dropdownSetting
 end
 
+function lib:CreateCheckboxSlider(cat, data)
+	assert(cat and data and data.key and data.sliderKey, "category, data.key, and data.sliderKey required")
+
+	-- Checkbox setting
+	local cbSetting = registerSetting(
+		cat,
+		data.key,
+		Settings.VarType.Boolean,
+		data.name or data.text or data.cbName or data.cbLabel or data.key,
+		data.default ~= nil and data.default or false,
+		data.get or data.getCheckbox or function()
+			return data.default
+		end,
+		data.set or data.setCheckbox,
+		data
+	)
+
+	-- Slider setting
+	local sliderDefault = data.sliderDefault or data.sliderValue or data.sliderMin or data.min or 0
+	local function sliderGetWrapper()
+		local val
+		if data.sliderGet then
+			val = data.sliderGet()
+		elseif data.getSlider then
+			val = data.getSlider()
+		elseif data.get then
+			val = data.get()
+		end
+		if val ~= nil then
+			local num = tonumber(val)
+			if num ~= nil then
+				val = num
+			end
+		end
+		if val == nil then
+			val = sliderDefault
+		end
+		return val
+	end
+	local sliderSetting = registerSetting(
+		cat,
+		data.sliderKey,
+		Settings.VarType.Number,
+		data.sliderName or data.sliderText or data.sliderLabel or data.sliderKey,
+		sliderDefault,
+		sliderGetWrapper,
+		data.sliderSet or data.setSlider or data.set,
+		{
+			prefix = data.sliderPrefix or data.prefix,
+			variable = data.sliderVariable,
+		}
+	)
+
+	local sliderOptions = Settings.CreateSliderOptions(data.sliderMin or data.min or 0, data.sliderMax or data.max or 1, data.sliderStep or data.step or 1)
+	if data.sliderFormatter or data.formatter then
+		sliderOptions:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, data.sliderFormatter or data.formatter)
+	end
+
+	local initializer = Settings.CreateElementInitializer("SettingsCheckboxSliderControlTemplate", {
+		name = data.name or data.text or data.cbName or data.cbLabel or data.key,
+		tooltip = data.desc or data.cbDesc or data.tooltip,
+		cbSetting = cbSetting,
+		cbLabel = data.name or data.text or data.cbName or data.cbLabel or data.key,
+		cbTooltip = data.desc or data.cbDesc or data.tooltip,
+		sliderSetting = sliderSetting,
+		sliderOptions = sliderOptions,
+		sliderLabel = data.sliderName or data.sliderText or data.sliderLabel or data.sliderKey,
+		sliderTooltip = data.sliderDesc or data.sliderTooltip,
+		newTagID = data.newTagID,
+	})
+
+	addSearchTags(initializer, data.searchtags, data.name or data.text)
+	applyParentInitializer(initializer, data.parent, data.parentCheck)
+	applyModifyPredicate(initializer, data)
+	applyExpandablePredicate(initializer, data)
+	Settings.RegisterInitializer(cat, initializer)
+	State.elements[data.key .. "_slider"] = initializer
+	maybeAttachNotify(cbSetting, data)
+	maybeAttachNotify(sliderSetting, data.sliderNotify and { notify = data.sliderNotify })
+	return initializer, cbSetting, sliderSetting
+end
+
 function lib:CreateColorOverrides(cat, data)
 	assert(cat and data and data.entries, "category and entries required")
 	local initializer = Settings.CreateElementInitializer("LibEQOL@project-abbreviated-hash@_ColorOverridesPanelNoHead", {
