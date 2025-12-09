@@ -1,5 +1,17 @@
 # Changelog
 
+## [7] - 2025-12-09
+
+Added:
+- Settings: Color Overrides can opt into alpha via `hasOpacity = true`; supports ColorMixin callbacks (`getColorMixin`/`setColorMixin`/`getDefaultColorMixin`) alongside numeric RGB(A).
+- Settings: Color Overrides now auto-size based on entry count (no more overlap) and respect `spacing`/`rowHeight`; hover highlight removed to match Blizzard.
+- Docs: Settings pages aligned to real APIs (prefix/variable requirement, Color Overrides alpha/mixin example, option defaults).
+
+Fixed:
+- Settings: Color Overrides label color pooling no longer leaks between rows; defaults restored on reuse.
+- Settings: Multi Dropdown forwards `customText`/`customDefaultText` and `callback` to the mixin again.
+- Settings: Color Overrides padding default reduced to zero to avoid extra trailing space; extent respects explicit `basePadding`/`minHeight`/`height`.
+
 ## [6] - 2025-12-07
 
 Added:
