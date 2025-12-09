@@ -9,6 +9,7 @@ Added:
 - Settings: New checkbox+dropdown combined control using Blizzard’s template.
 - Settings: New checkbox+slider combined control using Blizzard’s template.
 - Settings: New checkbox+button combined control using Blizzard’s template.
+- Settings: Buttons can now show a left-hand label (pass `label`/`name`/`textLabel`).
 
 Fixed:
 - Settings: Color Overrides label color pooling no longer leaks between rows; defaults restored on reuse.

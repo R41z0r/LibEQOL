@@ -1031,8 +1031,9 @@ end
 
 function lib:CreateButton(cat, data)
 	assert(cat and data and data.text, "category and data.text required")
+	local label = data.label or data.name or data.textLabel or ""
 	local btn =
-		CreateSettingsButtonInitializer("", data.text, data.click or data.func, data.desc, data.searchtags or false)
+		CreateSettingsButtonInitializer(label, data.text, data.click or data.func, data.desc, data.searchtags or false)
 	SettingsPanel:GetLayout(cat):AddInitializer(btn)
 	applyParentInitializer(btn, data.parent, data.parentCheck)
 	applyModifyPredicate(btn, data)
