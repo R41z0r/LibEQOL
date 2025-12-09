@@ -578,8 +578,11 @@ function lib:CreateColorOverrides(cat, data)
 		categoryID = cat:GetID(),
 		entries = data.entries,
 		getColor = data.getColor,
+		getColorMixin = data.getColorMixin,
 		setColor = data.setColor,
+		setColorMixin = data.setColorMixin,
 		getDefaultColor = data.getDefaultColor,
+		getDefaultColorMixin = data.getDefaultColorMixin,
 		parentCheck = data.parentCheck,
 		colorizeLabel = data.colorizeLabel or data.colorizeText,
 		hasOpacity = data.hasOpacity or data.hasAlpha,
@@ -591,7 +594,7 @@ function lib:CreateColorOverrides(cat, data)
 		local count = #(data.entries or {})
 		local rowHeight = data.rowHeight or 20
 		local spacing = data.spacing or 10 -- template default
-		local padding = data.basePadding or 16
+		local padding = data.basePadding or 5
 		local height = padding * 2
 		if count > 0 then
 			height = height + (count * rowHeight) + math.max(0, count - 1) * spacing
@@ -648,11 +651,14 @@ function lib:CreateMultiDropdown(cat, data)
 		defaultSelection = defaultSelection,
 		categoryID = cat and cat.GetID and cat:GetID(),
 		hideSummary = data.hideSummary,
+		customText = data.customText,
+		customDefaultText = data.customDefaultText,
 		isSelectedFunc = data.isSelected,
 		setSelectedFunc = data.setSelected,
 		getSelection = data.getSelection or data.get,
 		setSelection = data.setSelection or data.set,
 		summaryFunc = data.summary,
+		callback = data.callback,
 	})
 	initializer:SetSetting(setting)
 	addSearchTags(initializer, data.searchtags, data.name or data.text)
