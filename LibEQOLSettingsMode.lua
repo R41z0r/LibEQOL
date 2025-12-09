@@ -572,6 +572,125 @@ function lib:CreateSoundDropdown(cat, data)
 	return initializer, setting
 end
 
+function lib:CreateCheckboxDropdown(cat, data)
+	assert(cat and data and data.key and data.dropdownKey, "category, data.key, and data.dropdownKey required")
+
+	-- Checkbox setting
+	local cbSetting = registerSetting(
+		cat,
+		data.key,
+		Settings.VarType.Boolean,
+		data.name or data.text or data.cbName or data.cbLabel or data.key,
+		data.default ~= nil and data.default or false,
+		data.get or data.getCheckbox or function()
+			return data.default
+		end,
+		data.set or data.setCheckbox,
+		data
+	)
+
+	-- Dropdown setting
+	local dropdownDefault = data.dropdownDefault
+	local dropdownType = data.dropdownVarType
+	if not dropdownType then
+		local dt = type(dropdownDefault)
+		if dt == "number" then
+			dropdownType = Settings.VarType.Number
+		elseif dt == "boolean" then
+			dropdownType = Settings.VarType.Boolean
+		else
+			dropdownType = Settings.VarType.String
+		end
+	end
+
+	local dropdownData = {
+		prefix = data.dropdownPrefix or data.prefix,
+		variable = data.dropdownVariable,
+	}
+	local dropdownSetting = registerSetting(
+		cat,
+		data.dropdownKey,
+		dropdownType,
+		data.dropdownName or data.dropdownText or data.dropdownLabel or data.dropdownKey,
+		dropdownDefault,
+		data.dropdownGet or data.getDropdown,
+		data.dropdownSet or data.setDropdown,
+		dropdownData
+	)
+
+	-- Build options (invoked when the menu builds)
+	local function dropdownOptions()
+		local container = Settings.CreateControlTextContainer()
+		local list = data.dropdownValues or data.dropdownOptions
+		if data.dropdownOptionfunc then
+			local ok, result = pcall(data.dropdownOptionfunc)
+			if ok and type(result) == "table" then
+				list = result
+			end
+		end
+		if type(list) == "table" then
+			local orderedKeys = type(data.dropdownOrder) == "table" and data.dropdownOrder or nil
+			local seen = nil
+			if orderedKeys then
+				seen = {}
+				for _, key in ipairs(orderedKeys) do
+					if key ~= "_order" and list[key] ~= nil then
+						container:Add(key, list[key])
+						seen[key] = true
+					end
+				end
+			end
+			for key, value in pairs(list) do
+				if key ~= "_order" and (not seen or not seen[key]) then
+					container:Add(key, value)
+				end
+			end
+		end
+		return container:GetData()
+	end
+
+	local initializer = Settings.CreateElementInitializer("SettingsCheckboxDropdownControlTemplate", {
+		name = data.name or data.text or data.cbName or data.cbLabel or data.key,
+		tooltip = data.desc or data.cbDesc or data.tooltip,
+		cbSetting = cbSetting,
+		cbLabel = data.name or data.text or data.cbName or data.cbLabel or data.key,
+		cbTooltip = data.desc or data.cbDesc or data.tooltip,
+		dropdownSetting = dropdownSetting,
+		dropdownOptions = dropdownOptions,
+		dropDownLabel = data.dropdownName or data.dropdownText or data.dropdownLabel or data.dropdownKey,
+		dropDownTooltip = data.dropdownDesc or data.dropdownTooltip,
+	})
+	if data.getSelectionText or data.dropdownSelectionText then
+		local selectionTextFunc = data.getSelectionText or data.dropdownSelectionText
+		initializer.getSelectionTextFunc = function(selectionInfo)
+			local value = selectionInfo
+			if type(selectionInfo) == "table" then
+				value = selectionInfo.value or selectionInfo.text or selectionInfo.label or selectionInfo[1]
+			end
+			if type(value) == "table" then
+				value = value.value or value.text or value.label or value[1]
+			end
+			if value == nil then
+				value = ""
+			end
+			if type(value) ~= "string" and type(value) ~= "number" then
+				value = tostring(value)
+			end
+			return selectionTextFunc(value, selectionInfo)
+		end
+	end
+
+	addSearchTags(initializer, data.searchtags, data.name or data.text)
+	applyParentInitializer(initializer, data.parent, data.parentCheck)
+	applyModifyPredicate(initializer, data)
+	applyExpandablePredicate(initializer, data)
+	Settings.RegisterInitializer(cat, initializer)
+	State.elements[data.key .. "_dropdown"] = initializer
+	maybeAttachNotify(cbSetting, data)
+	maybeAttachNotify(dropdownSetting, data.dropdownNotify and { notify = data.dropdownNotify })
+	return initializer, cbSetting, dropdownSetting
+end
+
 function lib:CreateColorOverrides(cat, data)
 	assert(cat and data and data.entries, "category and entries required")
 	local initializer = Settings.CreateElementInitializer("LibEQOL@project-abbreviated-hash@_ColorOverridesPanelNoHead", {

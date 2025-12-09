@@ -6,6 +6,7 @@ Added:
 - Settings: Color Overrides can opt into alpha via `hasOpacity = true`; supports ColorMixin callbacks (`getColorMixin`/`setColorMixin`/`getDefaultColorMixin`) alongside numeric RGB(A).
 - Settings: Color Overrides now auto-size based on entry count (no more overlap) and respect `spacing`/`rowHeight`; hover highlight removed to match Blizzard.
 - Docs: Settings pages aligned to real APIs (prefix/variable requirement, Color Overrides alpha/mixin example, option defaults).
+- Settings: New checkbox+dropdown combined control using Blizzard’s template.
 
 Fixed:
 - Settings: Color Overrides label color pooling no longer leaks between rows; defaults restored on reuse.
