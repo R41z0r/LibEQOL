@@ -773,6 +773,38 @@ function lib:CreateCheckboxSlider(cat, data)
 	return initializer, cbSetting, sliderSetting
 end
 
+function lib:CreateCheckboxButton(cat, data)
+	assert(cat and data and data.key and (data.buttonClick or data.click), "category, data.key, and data.buttonClick/click required")
+	local setting = registerSetting(
+		cat,
+		data.key,
+		Settings.VarType.Boolean,
+		data.name or data.text or data.cbName or data.cbLabel or data.key,
+		data.default ~= nil and data.default or false,
+		data.get or data.getCheckbox or function()
+			return data.default
+		end,
+		data.set or data.setCheckbox,
+		data
+	)
+
+	local initializer = Settings.CreateElementInitializer("SettingsCheckboxWithButtonControlTemplate", {
+		buttonText = data.buttonText or data.buttonLabel or data.button or data.text or data.name,
+		OnButtonClick = data.buttonClick or data.click,
+		clickRequiresSet = data.clickRequiresSet or data.buttonRequiresChecked or data.buttonRequiresSet,
+	})
+	initializer:SetSetting(setting)
+
+	addSearchTags(initializer, data.searchtags, data.name or data.text)
+	applyParentInitializer(initializer, data.parent, data.parentCheck)
+	applyModifyPredicate(initializer, data)
+	applyExpandablePredicate(initializer, data)
+	Settings.RegisterInitializer(cat, initializer)
+	State.elements[data.key .. "_button"] = initializer
+	maybeAttachNotify(setting, data)
+	return initializer, setting
+end
+
 function lib:CreateColorOverrides(cat, data)
 	assert(cat and data and data.entries, "category and entries required")
 	local initializer = Settings.CreateElementInitializer("LibEQOL@project-abbreviated-hash@_ColorOverridesPanelNoHead", {

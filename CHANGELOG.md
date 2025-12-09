@@ -8,6 +8,7 @@ Added:
 - Docs: Settings pages aligned to real APIs (prefix/variable requirement, Color Overrides alpha/mixin example, option defaults).
 - Settings: New checkbox+dropdown combined control using Blizzard’s template.
 - Settings: New checkbox+slider combined control using Blizzard’s template.
+- Settings: New checkbox+button combined control using Blizzard’s template.
 
 Fixed:
 - Settings: Color Overrides label color pooling no longer leaks between rows; defaults restored on reuse.
