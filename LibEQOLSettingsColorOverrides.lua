@@ -137,9 +137,14 @@ function LibEQOL_ColorOverridesMixin:ApplyTextColor(frame)
 	if shouldColorize == nil then
 		shouldColorize = self.colorizeLabel
 	end
-	if not shouldColorize then
-		if frame._defaultTextColor then
-			frame.Text:SetTextColor(frame._defaultTextColor[1], frame._defaultTextColor[2], frame._defaultTextColor[3], 1)
+	local enabled = self._enabledState
+	if (enabled == false) or not shouldColorize then
+		local textColor = frame._defaultTextColor
+		if enabled == false then
+			textColor = { GRAY_FONT_COLOR:GetRGBA() }
+		end
+		if textColor then
+			frame.Text:SetTextColor(textColor[1], textColor[2], textColor[3], textColor[4] or 1)
 		end
 		return
 	end
@@ -280,6 +285,7 @@ function LibEQOL_ColorOverridesMixin:EvaluateState()
 	if self.parentCheck then
 		enabled = self.parentCheck()
 	end
+	self._enabledState = enabled
 
 	for _, frame in ipairs(self.colorOverrideFrames or {}) do
 		if frame.ColorSwatch then
