@@ -81,6 +81,8 @@ globals = {
 	"LibEQOL_ColorOverridesMixin",
 	"LibEQOL_MultiDropdownMixin",
 	"LibEQOL_SoundDropdownMixin",
+	"GRAY_FONT_COLOR",
+	"CreateColor",
 }
 
 files = {
