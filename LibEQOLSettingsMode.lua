@@ -20,6 +20,48 @@ local TextureKitConstants = _G.TextureKitConstants
 local HIGHLIGHT_FONT_COLOR = _G.HIGHLIGHT_FONT_COLOR
 local DISABLED_FONT_COLOR = _G.DISABLED_FONT_COLOR
 
+local function extractMenuHeight(initializer)
+	if not initializer then return nil end
+	if initializer.menuHeight then return initializer.menuHeight end
+	if initializer.height then return initializer.height end
+	if initializer.GetData then
+		local data = initializer:GetData()
+		if data then
+			if data.menuHeight then return data.menuHeight end
+			if data.height then return data.height end
+		end
+	end
+	return nil
+end
+
+local function ensureDropdownScrollWrapper(dropdown)
+	if not dropdown or dropdown._LibEQOL_MenuHeightWrapped then return end
+	dropdown._LibEQOL_MenuHeightWrapped = true
+
+	local origSetup = dropdown.SetupMenu
+	dropdown.SetupMenu = function(self, func, ...)
+		local height = self._LibEQOL_MenuHeight
+		if height and func then
+			local wrapped = function(owner, rootDescription)
+				rootDescription:SetScrollMode(height)
+				return func(owner, rootDescription)
+			end
+			return origSetup(self, wrapped, ...)
+		end
+		return origSetup(self, func, ...)
+	end
+end
+
+local origDropdownInit = SettingsDropdownControlMixin.Init
+function SettingsDropdownControlMixin:Init(initializer)
+	local menuHeight = extractMenuHeight(initializer)
+	if menuHeight and self.Control and self.Control.Dropdown then
+		self.Control.Dropdown._LibEQOL_MenuHeight = menuHeight
+		ensureDropdownScrollWrapper(self.Control.Dropdown)
+	end
+	return origDropdownInit(self, initializer)
+end
+
 local function normalizeSelectionMap(selection)
 	local map = {}
 	if type(selection) ~= "table" then
@@ -506,36 +548,63 @@ function lib:CreateDropdown(cat, data)
 		data.set,
 		data
 	)
+	local function buildOptionList()
+		local options = {}
+		local list = data.values
+		if data.optionfunc then
+			local ok, result = pcall(data.optionfunc)
+			if ok and type(result) == "table" then list = result end
+		end
+
+		if type(list) == "table" then
+			local orderedKeys = type(data.order) == "table" and data.order or nil
+			local seen = nil
+			if orderedKeys then
+				seen = {}
+				for _, key in ipairs(orderedKeys) do
+					if key ~= "_order" and list[key] ~= nil then
+						options[#options + 1] = { value = key, text = list[key] }
+						seen[key] = true
+					end
+				end
+			end
+			for key, value in pairs(list) do
+				if key ~= "_order" and (not seen or not seen[key]) then options[#options + 1] = { value = key, text = value } end
+			end
+		end
+
+		return options
+	end
+
+	local menuHeight = data.menuHeight or data.height
 	local function optionsFunc()
 		local container = Settings.CreateControlTextContainer()
-			local list = data.values
-			if data.optionfunc then
-				local ok, result = pcall(data.optionfunc)
-				if ok and type(result) == "table" then
-					list = result
-				end
-			end
-			if type(list) == "table" then
-				local orderedKeys = type(data.order) == "table" and data.order
-				local seen = nil
-				if orderedKeys then
-					seen = {}
-					for _, key in ipairs(orderedKeys) do
-						if key ~= "_order" and list[key] ~= nil then
-							container:Add(key, list[key])
-							seen[key] = true
-						end
-					end
-				end
-				for key, value in pairs(list) do
-					if key ~= "_order" and (not seen or not seen[key]) then
-						container:Add(key, value)
-					end
-				end
-			end
-			return container:GetData()
+		for _, opt in ipairs(buildOptionList()) do
+			container:Add(opt.value, opt.text)
 		end
-		local dropdown = Settings.CreateDropdown(cat, setting, optionsFunc, data.desc)
+		return container:GetData()
+	end
+	local dropdown = Settings.CreateDropdown(cat, setting, optionsFunc, data.desc)
+	dropdown.menuHeight = menuHeight or dropdown.menuHeight
+
+	if menuHeight and dropdown and dropdown.Control then
+		local controlDropdown = dropdown.Control.Dropdown or dropdown.Control
+		if controlDropdown and controlDropdown.SetupMenu then
+			controlDropdown:SetupMenu(function(_, rootDescription)
+				rootDescription:SetGridMode(MenuConstants.VerticalGridDirection)
+				rootDescription:SetScrollMode(menuHeight)
+
+				for _, opt in ipairs(buildOptionList()) do
+					local value = opt.value
+					local label = opt.text
+					rootDescription:CreateRadio(label, function() return setting:GetValue() == value end, function()
+						setting:SetValue(value)
+					end, opt)
+				end
+			end)
+		end
+	end
+
 	applyParentInitializer(dropdown, data.parent, data.parentCheck)
 	applyModifyPredicate(dropdown, data)
 	addSearchTags(dropdown, data.searchtags, data.name or data.text)
@@ -900,6 +969,7 @@ function lib:CreateMultiDropdown(cat, data)
 		hideSummary = data.hideSummary,
 		customText = data.customText,
 		customDefaultText = data.customDefaultText,
+		menuHeight = data.menuHeight or data.height,
 		isSelectedFunc = data.isSelected,
 		setSelectedFunc = data.setSelected,
 		getSelection = data.getSelection or data.get,

@@ -189,6 +189,7 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	self.summaryFunc = data.summaryFunc or data.summary
 	self.defaultSelection = self.defaultSelection or NormalizeSelection(data.defaultSelection or data.default)
 	self.categoryID = self.categoryID or data.categoryID
+	self.menuHeight = data.menuHeight or data.height or self.menuHeight
 	-- Default caption behaviour for empty state
 	if data.customText ~= nil then
 		self.customDefaultText = data.customText
@@ -512,6 +513,7 @@ function LibEQOL_MultiDropdownMixin:SetupDropdownMenu(button, setting, optionsFu
 
 	dropdown:SetupMenu(function(_, rootDescription)
 		rootDescription:SetGridMode(MenuConstants.VerticalGridDirection)
+		if self.menuHeight then rootDescription:SetScrollMode(self.menuHeight) end
 
 		self:RefreshSelectionCache()
 		local opts = optionsFunc() or {}
