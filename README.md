@@ -5,10 +5,12 @@ Quality-of-life toolkit for WoW addons. Today it ships the Edit Mode helper subl
 Full docs live at: https://github.com/R41z0r/LibEQOL/wiki
 
 ## Requirements
+
 - Retail WoW 10.0+ (uses Edit Mode APIs)
 - LibStub (bundled by most addon frameworks)
 
 ## Install / embed
+
 - **Standalone:** Drop `LibEQOL` into `Interface/AddOns` and enable it; it loads automatically.
 - **Embedded:** Place the folder in `libs/` and include `LibEQOL.xml` in your TOC:
   ```
@@ -17,6 +19,7 @@ Full docs live at: https://github.com/R41z0r/LibEQOL/wiki
 - **Packaging (BigWigs packager):** Do **not** list LibEQOL as an External; it can bleed into other addons and create XML/template conflicts. Vendor it explicitly (e.g. with the GitHub Action below) into your `libs/` directory instead.
 
 ## GitHub Action helper
+
 Use the published action in this repo to pull the latest LibEQOL release ZIP during CI and unpack it into your addon. Set `destination` to the folder that should contain `LibEQOL/` (for example `EnhanceQoL/libs`); the action creates that path, extracts the ZIP, and stages `destination/LibEQOL` in your repo.
 
 ```
@@ -29,6 +32,7 @@ Use the published action in this repo to pull the latest LibEQOL release ZIP dur
 Optional inputs: `repo` (defaults to this repo) and `github-token` (defaults to `github.token`). Outputs: `tag` and `asset_url` from the resolved release.
 
 ## Architecture
+
 - Single-file design with explicit layers: state tracker, pool manager, widget builders, dialog controller, and selection handling.
 - Modules under `LibEQOL`: **LibEQOLEditMode** (shipping) and **LibEQOLSettingsMode** (shipping) share the core helpers while exposing separate APIs.
 - Umbrella entry (`LibEQOL.lua`) surfaces sublibs on `_G.LibEQOL` (`EditMode` is loaded by default; future modules attach alongside).
@@ -36,6 +40,7 @@ Optional inputs: `repo` (defaults to this repo) and `github-token` (defaults to 
 - Public API for Edit Mode (`AddFrame`, `AddFrameSettings`, `AddFrameSettingsButton`, callbacks, `SettingType`, etc.) stays stable for drop-in compatibility.
 
 ## Getting started (TL;DR)
+
 ```lua
 local EditMode = LibStub("LibEQOLEditMode-1.0")
 
@@ -80,6 +85,7 @@ end)
 ```
 
 ## Feature highlights
+
 - Selection overlay and move handles that integrate with Blizzard Edit Mode selection/highlight.
 - Keyboard nudging (arrow keys, Shift for larger steps) and reset-to-default positioning.
 - Auto-built settings dialog with pooled widgets (checkbox, dropdown, multi dropdown, slider, color picker, checkbox+color, dropdown+color) and a built-in reset action.
@@ -88,6 +94,7 @@ end)
 - Helpers to refresh setting enable states when your backing data changes.
 
 ## API quick reference
+
 - `AddFrame(frame, callback, defaultPosition)` – register a frame for Edit Mode. `callback(frame, layoutName, point, x, y)` fires on move/reset; anchors stay relative to the frame’s current parent (or existing relative frame when nudging) and `defaultPosition` defaults to `{ point = "CENTER", x = 0, y = 0 }` relative to the parent. Opt-in overlay/label toggle via `defaultPosition.enableOverlayToggle = true` (or `overlayToggleEnabled = true`).
 - Reset button: sets settings back to their `default` (and `colorDefault` where applicable); settings without defaults are skipped.
 - `AddFrameSettings(frame, settingsTable)` – supply rows for the settings dialog. See **Setting rows**.
@@ -106,11 +113,13 @@ end)
 Example: `examples/EditModeExamples.lua` (https://raw.githubusercontent.com/R41z0r/LibEQOL/main/examples/EditModeExamples.lua) includes an "Overlay Toggle" frame showing how to opt into the eye-button via `enableOverlayToggle = true`. Also see `docs/overlay-toggle-example.lua`. GIF: https://raw.githubusercontent.com/wiki/R41z0r/LibEQOL/assets/widgets/frames/example-hideoverlay.gif
 
 ## Setting rows (schema + examples)
+
 Each row needs `name`, `kind`, `get(layoutName)`, `set(layoutName, value)`, and `default`. Optional `isEnabled(layoutName)` or `disabled(layoutName)` toggle availability.
 
 Kinds (from `EditMode.SettingType`):
+
 - `Checkbox` – boolean toggle.
-- `Dropdown` – either `values = { { text = "Option", isRadio = true? }, ... }` or a `generator(owner, rootDescription, data)` for dynamic menus. Optional `height` to force scrolling.
+- `Dropdown` – either `values = { { text = "Option" }, ... }` or a `generator(owner, rootDescription, data)` for dynamic menus. Single-select; use `MultiDropdown` for checkbox menus. Optional `height` to force scrolling.
 - `MultiDropdown` – checkbox menu that returns a map of selected values; supports `values`/`options`, optional `optionfunc(layout)`, `isSelected`, and `setSelected`.
 - `Slider` – `minValue`, `maxValue`, optional `valueStep`, `formatter`, `allowInput` (show text box).
 - `Color` – values resolve to `{ r, g, b, a? }`; set `hasOpacity` to allow alpha.
@@ -119,9 +128,11 @@ Kinds (from `EditMode.SettingType`):
 - `tooltip = "..."` can be added to any row to show a GameTooltip on hover.
 
 ## Distribution tips
- - Keep `LibStub` loading before `LibEQOL.lua` when embedding.
- - If you rely on load-on-demand, list `LibEQOL` in `OptionalDeps` so the library is ready before your code runs.
+
+- Keep `LibStub` loading before `LibEQOL.lua` when embedding.
+- If you rely on load-on-demand, list `LibEQOL` in `OptionalDeps` so the library is ready before your code runs.
 
 ## Troubleshooting
+
 - If a frame does not move, ensure it is parented and not forbidden during combat; Edit Mode is blocked in combat.
 - Call `lib.internal:RefreshSettings()` after you mutate data that controls `isEnabled`/`disabled` logic for visible rows.

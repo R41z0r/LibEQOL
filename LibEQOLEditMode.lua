@@ -1321,19 +1321,11 @@ local function buildDropdown()
 					rootDescription:SetScrollMode(data.height)
 				end
 				for _, value in next, data.values do
-					if value.isRadio then
-						rootDescription:CreateRadio(value.text, dropdownGet, dropdownSet, {
-							get = data.get,
-							set = data.set,
-							value = value.text,
-						})
-					else
-						rootDescription:CreateCheckbox(value.text, dropdownGet, dropdownSet, {
-							get = data.get,
-							set = data.set,
-							value = value.text,
-						})
-					end
+					rootDescription:CreateRadio(value.text, dropdownGet, dropdownSet, {
+						get = data.get,
+						set = data.set,
+						value = value.text,
+					})
 				end
 			end)
 		end
@@ -1966,15 +1958,9 @@ local function buildDropdownColor()
 			end
 			if data.values then
 				for _, value in next, data.values do
-					if value.isRadio then
-						rootDescription:CreateRadio(value.text, function()
-							return getCurrent() == value.text
-						end, makeSetter(value.text))
-					else
-						rootDescription:CreateCheckbox(value.text, function()
-							return getCurrent() == value.text
-						end, makeSetter(value.text))
-					end
+					rootDescription:CreateRadio(value.text, function()
+						return getCurrent() == value.text
+					end, makeSetter(value.text))
 				end
 			end
 		end
