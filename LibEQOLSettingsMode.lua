@@ -1,4 +1,4 @@
-local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 6001001
+local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 7001001
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -25,21 +25,35 @@ local function normalizeSelectionMap(selection)
 	if type(selection) ~= "table" then
 		return map
 	end
-	if #selection > 0 then
+	local hasArrayPart = #selection > 0
+	local arrayHasNonBoolean = false
+
+	if hasArrayPart then
+		for i = 1, #selection do
+			local value = selection[i]
+			if value ~= nil and type(value) ~= "boolean" then
+				arrayHasNonBoolean = true
+				break
+			end
+		end
+	end
+
+	if hasArrayPart and arrayHasNonBoolean then
 		for _, value in ipairs(selection) do
-			if value ~= nil then
+			if value ~= nil and (type(value) == "string" or type(value) == "number") then
 				map[value] = true
 			end
 		end
 	else
 		for key, value in pairs(selection) do
-			if value then
+			if value and (type(key) == "string" or type(key) == "number") then
 				map[key] = true
 			end
 		end
 	end
 	return map
 end
+
 
 local function sortMixedKeys(keys)
 	table.sort(keys, function(a, b)
@@ -68,7 +82,7 @@ local function serializeSelection(selection)
 	local map = normalizeSelectionMap(selection)
 	local keys = {}
 	for key, value in pairs(map) do
-		if value then
+		if value and (type(key) == "string" or type(key) == "number") then
 			keys[#keys + 1] = key
 		end
 	end

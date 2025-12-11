@@ -1,4 +1,4 @@
-local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 6001001
+local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 7001001
 local _, lib = pcall(LibStub, MODULE_MAJOR)
 if not lib then
 	return
@@ -16,13 +16,26 @@ local function NormalizeSelection(selection)
 		return map
 	end
 
-	if #selection > 0 then
+	local hasArrayPart = #selection > 0
+	local arrayHasNonBoolean = false
+
+	if hasArrayPart then
+		for i = 1, #selection do
+			local value = selection[i]
+			if value ~= nil and type(value) ~= "boolean" then
+				arrayHasNonBoolean = true
+				break
+			end
+		end
+	end
+
+	if hasArrayPart and arrayHasNonBoolean then
 		for _, value in ipairs(selection) do
-			if value ~= nil then map[value] = true end
+			if value ~= nil and (type(value) == "string" or type(value) == "number") then map[value] = true end
 		end
 	else
 		for key, value in pairs(selection) do
-			if value then map[key] = true end
+			if value and (type(key) == "string" or type(key) == "number") then map[key] = true end
 		end
 	end
 	return map
@@ -323,7 +336,7 @@ function LibEQOL_MultiDropdownMixin:SerializeSelection(tbl)
 
 	local keys = {}
 	for k, v in pairs(tbl) do
-		if v then table.insert(keys, k) end
+		if v and (type(k) == "string" or type(k) == "number") then table.insert(keys, k) end
 	end
 	SortMixedKeys(keys)
 	return table.concat(keys, ",")
