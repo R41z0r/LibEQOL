@@ -898,6 +898,7 @@ function lib:CreateMultiDropdown(cat, data)
 		defaultSelection = defaultSelection,
 		categoryID = cat and cat.GetID and cat:GetID(),
 		hideSummary = data.hideSummary,
+		height = data.height or data.menuHeight,
 		customText = data.customText,
 		customDefaultText = data.customDefaultText,
 		isSelectedFunc = data.isSelected,

@@ -1,6 +1,6 @@
 # Changelog
 
-## [7] - 2025-12-09
+## [7] - 2025-12-12
 
 Added:
 - Settings: Color Overrides can opt into alpha via `hasOpacity = true`; supports ColorMixin callbacks (`getColorMixin`/`setColorMixin`/`getDefaultColorMixin`) alongside numeric RGB(A).
@@ -14,6 +14,7 @@ Added:
 Fixed:
 - Settings: Color Overrides label color pooling no longer leaks between rows; defaults restored on reuse.
 - Settings: Multi Dropdown forwards `customText`/`customDefaultText` and `callback` to the mixin again.
+- Settings: Multi Dropdown now correctly uses height to show a scrollframe.
 - Settings: Color Overrides padding default reduced to zero to avoid extra trailing space; extent respects explicit `basePadding`/`minHeight`/`height`.
 - Settings: Multi-dropdown serialization to ignore boolean array entries, preventing table.concat crashes when saved selections are stored as [1]=true, [2]=true,
 

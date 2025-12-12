@@ -215,6 +215,27 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	self:SyncSetting()
 end
 
+-- OVERRIDE: Avoid regenerating the dropdown menu on value changes when using scroll mode.
+-- In scroll mode the menu is virtualized via ScrollBox and a full InitDropdown during an
+-- open menu can cause elements to jump/reorder until the scrollbox reanchors.
+function LibEQOL_MultiDropdownMixin:SetValue(value)
+	local useScroll = self.data and type(self.data.height) == "number" and self.data.height > 0
+	if useScroll then
+		-- Keep caches in sync; open menu will refresh via MenuResponse.Refresh.
+		self.selectionCache = nil
+		if not self.hideSummary then
+			self:RefreshSummary()
+		end
+		return
+	end
+
+	-- Default dropdown behavior for non-scroll mode.
+	self:InitDropdown()
+	if not self.hideSummary then
+		self:RefreshSummary()
+	end
+end
+
 -- Auswahlmodell
 
 function LibEQOL_MultiDropdownMixin:GetLegacySelectionTable()
@@ -511,7 +532,15 @@ function LibEQOL_MultiDropdownMixin:SetupDropdownMenu(button, setting, optionsFu
 	dropdown:SetDefaultText(defaultText)
 
 	dropdown:SetupMenu(function(_, rootDescription)
-		rootDescription:SetGridMode(MenuConstants.VerticalGridDirection)
+		local useScroll = self.data and type(self.data.height) == "number" and self.data.height > 0
+
+		if useScroll then
+			rootDescription:SetScrollMode(self.data.height)
+		else
+			if rootDescription.SetGridMode then
+				rootDescription:SetGridMode(MenuConstants.VerticalGridDirection)
+			end
+		end
 
 		self:RefreshSelectionCache()
 		local opts = optionsFunc() or {}
@@ -526,6 +555,10 @@ function LibEQOL_MultiDropdownMixin:SetupDropdownMenu(button, setting, optionsFu
 				end, opt)
 			end
 		end
+		
+		if useScroll and rootDescription.DisableReacquireFrames then
+        	rootDescription:DisableReacquireFrames()
+    	end
 	end)
 
 	if initTooltip then

@@ -120,7 +120,7 @@ Kinds (from `EditMode.SettingType`):
 
 - `Checkbox` – boolean toggle.
 - `Dropdown` – either `values = { { text = "Option" }, ... }` or a `generator(owner, rootDescription, data)` for dynamic menus. Single-select; use `MultiDropdown` for checkbox menus. Optional `height` to force scrolling.
-- `MultiDropdown` – checkbox menu that returns a map of selected values; supports `values`/`options`, optional `optionfunc(layout)`, `isSelected`, and `setSelected`.
+- `MultiDropdown` – checkbox menu that returns a map of selected values; supports `values`/`options`, optional `optionfunc(layout)`, `isSelected`, and `setSelected`. Optional `height` to force scrolling.
 - `Slider` – `minValue`, `maxValue`, optional `valueStep`, `formatter`, `allowInput` (show text box).
 - `Color` – values resolve to `{ r, g, b, a? }`; set `hasOpacity` to allow alpha.
 - `CheckboxColor` – boolean + color. Use `colorGet(layout)` and `colorSet(layout, color)` (or `setColor`) plus `colorDefault`.
