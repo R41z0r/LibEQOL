@@ -117,22 +117,37 @@ end
 
 local function FindSelectionText(options, value)
 	for _, opt in ipairs(options or {}) do
-		if opt.value == value then
-			return opt.text or opt.label or tostring(opt.value)
+		local optValue = opt and opt.value
+		if type(optValue) == "table" then
+			optValue = optValue.value or optValue.key or optValue.id or optValue.text or optValue.label or optValue.name or optValue[1]
+		end
+		if optValue == value then
+			return opt.text or opt.label or tostring(optValue)
 		end
 	end
 	return nil
+end
+
+local function NormalizeSelectionValue(value)
+	if type(value) ~= "table" then
+		return value
+	end
+	local normalized = value.value or value.key or value.id or value.text or value.label or value.name or value[1]
+	if type(normalized) == "table" then
+		normalized = normalized.value or normalized.key or normalized.id or normalized.text or normalized.label or normalized.name or normalized[1]
+	end
+	return normalized
 end
 
 function LibEQOL_ScrollDropdownMixin:RefreshDropdownText(value)
 	local dropdown = self.Control and self.Control.Dropdown
 	if not dropdown then return end
 
-	local currentValue = value
+	local currentValue = NormalizeSelectionValue(value)
 	if currentValue == nil then
 		local setting = self:GetSetting()
 		if setting and setting.GetValue then
-			currentValue = setting:GetValue()
+			currentValue = NormalizeSelectionValue(setting:GetValue())
 		end
 	end
 
@@ -141,7 +156,9 @@ function LibEQOL_ScrollDropdownMixin:RefreshDropdownText(value)
 		text = self.customDefaultText ~= nil and tostring(self.customDefaultText) or ""
 	end
 
-	if dropdown.SetText then
+	if dropdown.OverrideText then
+		dropdown:OverrideText(text)
+	elseif dropdown.SetText then
 		dropdown:SetText(text)
 	elseif dropdown.Text and dropdown.Text.SetText then
 		dropdown.Text:SetText(text)
@@ -179,6 +196,7 @@ function LibEQOL_ScrollDropdownMixin:InitDropdown()
 	end
 
 	self:SetupDropdownMenu(self.Control.Dropdown, setting, optionsFunc, initTooltip)
+	self:RefreshDropdownText()
 end
 
 function LibEQOL_ScrollDropdownMixin:SetupDropdownMenu(button, setting, optionsFunc, initTooltip)
