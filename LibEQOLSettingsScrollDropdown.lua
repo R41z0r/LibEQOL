@@ -153,7 +153,11 @@ function LibEQOL_ScrollDropdownMixin:RefreshDropdownText(value)
 
 	local text = FindSelectionText(self:GetOptions(), currentValue)
 	if text == nil then
-		text = self.customDefaultText ~= nil and tostring(self.customDefaultText) or ""
+		if currentValue ~= nil and currentValue ~= "" then
+			text = tostring(currentValue)
+		else
+			text = self.customDefaultText ~= nil and tostring(self.customDefaultText) or ""
+		end
 	end
 
 	if dropdown.OverrideText then
