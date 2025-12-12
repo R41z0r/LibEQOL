@@ -20,6 +20,7 @@ VERSION_FILE = Path("scripts/settings-version.json")
 TARGETS = [
     Path("LibEQOLSettingsMode.lua"),
     Path("LibEQOLSettingsMultiDropdown.lua"),
+    Path("LibEQOLSettingsScrollDropdown.lua"),
     Path("LibEQOLSettingsSoundDropdown.lua"),
     Path("LibEQOLSettingsColorOverrides.lua"),
 ]
