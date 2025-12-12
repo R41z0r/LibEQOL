@@ -10,6 +10,7 @@ Added:
 - Settings: New checkbox+slider combined control using Blizzard’s template.
 - Settings: New checkbox+button combined control using Blizzard’s template.
 - Settings: Buttons can now show a left-hand label (pass `label`/`name`/`textLabel`).
+- Settings: New `CreateScrollDropdown` control for scrollable single-select menus (`height`/`menuHeight`).
 
 Fixed:
 - Settings: Color Overrides label color pooling no longer leaks between rows; defaults restored on reuse.

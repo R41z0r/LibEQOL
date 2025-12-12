@@ -545,6 +545,82 @@ function lib:CreateDropdown(cat, data)
 	return dropdown, setting
 end
 
+function lib:CreateScrollDropdown(cat, data)
+	assert(cat and data and data.key, "category and data.key required")
+	local defaultType = type(data.default)
+	local varType = data.varType
+	if not varType then
+		if defaultType == "number" then
+			varType = Settings.VarType.Number
+		elseif defaultType == "boolean" then
+			varType = Settings.VarType.Boolean
+		else
+			varType = Settings.VarType.String
+		end
+	end
+
+	local setting = registerSetting(
+		cat,
+		data.key,
+		varType,
+		data.name or data.text or data.key,
+		data.default,
+		data.get,
+		data.set,
+		data
+	)
+
+	local function optionsFunc()
+		local container = Settings.CreateControlTextContainer()
+		local list = data.values or data.options
+		if data.optionfunc then
+			local ok, result = pcall(data.optionfunc)
+			if ok and type(result) == "table" then
+				list = result
+			end
+		end
+		if type(list) == "table" then
+			local orderedKeys = type(data.order) == "table" and data.order
+			local seen = nil
+			if orderedKeys then
+				seen = {}
+				for _, key in ipairs(orderedKeys) do
+					if key ~= "_order" and list[key] ~= nil then
+						container:Add(key, list[key])
+						seen[key] = true
+					end
+				end
+			end
+			for key, value in pairs(list) do
+				if key ~= "_order" and (not seen or not seen[key]) then
+					container:Add(key, value)
+				end
+			end
+		end
+		return container:GetData()
+	end
+
+	local initializer = Settings.CreateElementInitializer("LibEQOL@project-abbreviated-hash@_ScrollDropdownTemplate", {
+		label = data.name or data.text or data.key,
+		optionsFunc = optionsFunc,
+		generator = data.generator,
+		order = data.order,
+		height = data.height or data.menuHeight,
+		customText = data.customText,
+		customDefaultText = data.customDefaultText,
+		callback = data.callback,
+	})
+	initializer:SetSetting(setting)
+	addSearchTags(initializer, data.searchtags, data.name or data.text)
+	applyParentInitializer(initializer, data.parent, data.parentCheck)
+	applyModifyPredicate(initializer, data)
+	applyExpandablePredicate(initializer, data)
+	Settings.RegisterInitializer(cat, initializer)
+	State.elements[data.key] = initializer
+	maybeAttachNotify(setting, data)
+	return initializer, setting
+end
+
 function lib:CreateSoundDropdown(cat, data)
 	assert(cat and data and data.key, "category and data.key required")
 	local setting = registerSetting(
