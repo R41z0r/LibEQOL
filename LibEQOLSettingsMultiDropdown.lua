@@ -555,10 +555,10 @@ function LibEQOL_MultiDropdownMixin:SetupDropdownMenu(button, setting, optionsFu
 				end, opt)
 			end
 		end
-		
+
 		if useScroll and rootDescription.DisableReacquireFrames then
-        	rootDescription:DisableReacquireFrames()
-    	end
+			rootDescription:DisableReacquireFrames()
+		end
 	end)
 
 	if initTooltip then
