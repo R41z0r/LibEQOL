@@ -40,6 +40,12 @@
         </Layers>
     </Button>
 
+    <Button name="LibEQOL@project-abbreviated-hash@_ScrollDropdownTemplate"
+        virtual="true"
+        inherits="SettingsDropdownControlTemplate"
+        mixin="LibEQOL_ScrollDropdownMixin">
+    </Button>
+
     <Frame name="LibEQOL@project-abbreviated-hash@_ColorOverridesPanel" mixin="LibEQOL_ColorOverridesMixin" virtual="true">
 		<Size x="200" y="60"/>
 		<Layers>

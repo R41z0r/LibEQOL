@@ -196,7 +196,11 @@ function LibEQOL_SoundDropdownMixin:SetupPreviewButton()
 
 	local button = CreateFrame("Button", nil, self)
 	button:SetSize(self.data.previewWidth or 20, self.frameHeight)
-	ApplySingleAnchor(button, self.data.previewButtonAnchor or DEFAULT_PREVIEW_POINT, self)
+	local anchor = self.data.previewButtonAnchor or DEFAULT_PREVIEW_POINT
+	if type(anchor) == "table" then
+		anchor = { anchor[1] or anchor.point or "LEFT", anchor[2], anchor[3] or (anchor[2] and "CENTER" or "LEFT"), (anchor[4] or anchor.x or anchor.offsetX or 0) + 3, anchor[5] or anchor.y or anchor.offsetY or 0 }
+	end
+	ApplySingleAnchor(button, anchor, self)
 	button:SetMotionScriptsWhileDisabled(true)
 
 	local icon = button:CreateTexture(nil, "ARTWORK")
@@ -231,12 +235,22 @@ end
 function LibEQOL_SoundDropdownMixin:SetupDropdown()
 	if self.soundDropdown then return end
 
-	local dropdown = CreateFrame("DropdownButton", nil, self, self.data.dropdownTemplate or "WowStyle1DropdownTemplate")
+	-- Prefer modern Settings dropdown styling
+	local template = self.data.dropdownTemplate or "SettingsDropdownWithButtonsTemplate"
+	local frame = CreateFrame("Frame", nil, self, template)
+	if frame.DecrementButton then frame.DecrementButton:Hide() end
+	if frame.IncrementButton then frame.IncrementButton:Hide() end
+	local dropdown = frame.Dropdown or frame
+
 	if self.data.dropdownAnchors then
 		ApplyAnchors(dropdown, self.data.dropdownAnchors, self.previewButton)
 	else
-		dropdown:SetPoint("LEFT", self.previewButton, "RIGHT", 5, 0)
-		dropdown:SetPoint("RIGHT", self, "RIGHT", -20, 0)
+		dropdown:ClearAllPoints()
+		dropdown:SetPoint("LEFT", self.previewButton, "RIGHT", 4, 0)
+		local availableWidth = (self.frameWidth or 280) - (self.previewButton:GetWidth() + 39)
+		if availableWidth > 0 then
+			dropdown:SetWidth(availableWidth)
+		end
 	end
 	dropdown:SetHeight(self.frameHeight)
 

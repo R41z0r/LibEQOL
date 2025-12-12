@@ -78,10 +78,13 @@ globals = {
 	"SettingsDropdownControlMixin",
 	"PlaySoundFile",
 	"hooksecurefunc",
-	"LibEQOL_ColorOverridesMixin",
-	"LibEQOL_MultiDropdownMixin",
-	"LibEQOL_SoundDropdownMixin",
-}
+		"LibEQOL_ColorOverridesMixin",
+		"LibEQOL_MultiDropdownMixin",
+		"LibEQOL_ScrollDropdownMixin",
+		"LibEQOL_SoundDropdownMixin",
+		"GRAY_FONT_COLOR",
+		"CreateColor",
+	}
 
 files = {
 	["libs/LibStub/LibStub.lua"] = {

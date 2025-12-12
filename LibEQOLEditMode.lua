@@ -1321,19 +1321,11 @@ local function buildDropdown()
 					rootDescription:SetScrollMode(data.height)
 				end
 				for _, value in next, data.values do
-					if value.isRadio then
-						rootDescription:CreateRadio(value.text, dropdownGet, dropdownSet, {
-							get = data.get,
-							set = data.set,
-							value = value.text,
-						})
-					else
-						rootDescription:CreateCheckbox(value.text, dropdownGet, dropdownSet, {
-							get = data.get,
-							set = data.set,
-							value = value.text,
-						})
-					end
+					rootDescription:CreateRadio(value.text, dropdownGet, dropdownSet, {
+						get = data.get,
+						set = data.set,
+						value = value.text,
+					})
 				end
 			end)
 		end
@@ -1680,8 +1672,8 @@ local function buildColor()
 	end
 
 	function mixin:SetColor(r, g, b, a)
-		self.r, self.g, self.b, self.a = r, g, b, a
-		self.Swatch:SetColorTexture(r, g, b, 1)
+			self.r, self.g, self.b, self.a = r, g, b, a
+			self.Swatch:SetColorTexture(r, g, b, a or 1)
 	end
 
 	function mixin:OnClick()
@@ -1813,8 +1805,8 @@ local function buildCheckboxColor()
 	end
 
 	function mixin:SetColor(r, g, b, a)
-		self.r, self.g, self.b, self.a = r, g, b, a
-		self.Swatch:SetColorTexture(r, g, b, 1)
+			self.r, self.g, self.b, self.a = r, g, b, a
+			self.Swatch:SetColorTexture(r, g, b, a or 1)
 	end
 
 	function mixin:OnCheckboxClick()
@@ -1966,15 +1958,9 @@ local function buildDropdownColor()
 			end
 			if data.values then
 				for _, value in next, data.values do
-					if value.isRadio then
-						rootDescription:CreateRadio(value.text, function()
-							return getCurrent() == value.text
-						end, makeSetter(value.text))
-					else
-						rootDescription:CreateCheckbox(value.text, function()
-							return getCurrent() == value.text
-						end, makeSetter(value.text))
-					end
+					rootDescription:CreateRadio(value.text, function()
+						return getCurrent() == value.text
+					end, makeSetter(value.text))
 				end
 			end
 		end
@@ -2007,8 +1993,8 @@ local function buildDropdownColor()
 	end
 
 	function mixin:SetColor(r, g, b, a)
-		self.r, self.g, self.b, self.a = r, g, b, a
-		self.Swatch:SetColorTexture(r, g, b, 1)
+			self.r, self.g, self.b, self.a = r, g, b, a
+			self.Swatch:SetColorTexture(r, g, b, a or 1)
 	end
 
 	function mixin:OnColorClick()

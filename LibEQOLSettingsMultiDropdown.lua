@@ -1,4 +1,4 @@
-local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 6001001
+local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 7001001
 local _, lib = pcall(LibStub, MODULE_MAJOR)
 if not lib then
 	return
@@ -16,13 +16,26 @@ local function NormalizeSelection(selection)
 		return map
 	end
 
-	if #selection > 0 then
+	local hasArrayPart = #selection > 0
+	local arrayHasNonBoolean = false
+
+	if hasArrayPart then
+		for i = 1, #selection do
+			local value = selection[i]
+			if value ~= nil and type(value) ~= "boolean" then
+				arrayHasNonBoolean = true
+				break
+			end
+		end
+	end
+
+	if hasArrayPart and arrayHasNonBoolean then
 		for _, value in ipairs(selection) do
-			if value ~= nil then map[value] = true end
+			if value ~= nil and (type(value) == "string" or type(value) == "number") then map[value] = true end
 		end
 	else
 		for key, value in pairs(selection) do
-			if value then map[key] = true end
+			if value and (type(key) == "string" or type(key) == "number") then map[key] = true end
 		end
 	end
 	return map
@@ -202,6 +215,27 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	self:SyncSetting()
 end
 
+-- OVERRIDE: Avoid regenerating the dropdown menu on value changes when using scroll mode.
+-- In scroll mode the menu is virtualized via ScrollBox and a full InitDropdown during an
+-- open menu can cause elements to jump/reorder until the scrollbox reanchors.
+function LibEQOL_MultiDropdownMixin:SetValue(value)
+	local useScroll = self.data and type(self.data.height) == "number" and self.data.height > 0
+	if useScroll then
+		-- Keep caches in sync; open menu will refresh via MenuResponse.Refresh.
+		self.selectionCache = nil
+		if not self.hideSummary then
+			self:RefreshSummary()
+		end
+		return
+	end
+
+	-- Default dropdown behavior for non-scroll mode.
+	self:InitDropdown()
+	if not self.hideSummary then
+		self:RefreshSummary()
+	end
+end
+
 -- Auswahlmodell
 
 function LibEQOL_MultiDropdownMixin:GetLegacySelectionTable()
@@ -323,7 +357,7 @@ function LibEQOL_MultiDropdownMixin:SerializeSelection(tbl)
 
 	local keys = {}
 	for k, v in pairs(tbl) do
-		if v then table.insert(keys, k) end
+		if v and (type(k) == "string" or type(k) == "number") then table.insert(keys, k) end
 	end
 	SortMixedKeys(keys)
 	return table.concat(keys, ",")
@@ -498,7 +532,15 @@ function LibEQOL_MultiDropdownMixin:SetupDropdownMenu(button, setting, optionsFu
 	dropdown:SetDefaultText(defaultText)
 
 	dropdown:SetupMenu(function(_, rootDescription)
-		rootDescription:SetGridMode(MenuConstants.VerticalGridDirection)
+		local useScroll = self.data and type(self.data.height) == "number" and self.data.height > 0
+
+		if useScroll then
+			rootDescription:SetScrollMode(self.data.height)
+		else
+			if rootDescription.SetGridMode then
+				rootDescription:SetGridMode(MenuConstants.VerticalGridDirection)
+			end
+		end
 
 		self:RefreshSelectionCache()
 		local opts = optionsFunc() or {}
@@ -512,6 +554,10 @@ function LibEQOL_MultiDropdownMixin:SetupDropdownMenu(button, setting, optionsFu
 					if self.callback then self.callback(opt) end
 				end, opt)
 			end
+		end
+
+		if useScroll and rootDescription.DisableReacquireFrames then
+			rootDescription:DisableReacquireFrames()
 		end
 	end)
 

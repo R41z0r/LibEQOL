@@ -10,7 +10,7 @@ end
 LibEQOL_ColorOverridesMixin = CreateFromMixins(SettingsListElementMixin)
 
 local DEFAULT_ROW_HEIGHT = 20
-local DEFAULT_PADDING = 16
+local DEFAULT_PADDING = 5
 local DEFAULT_SPACING = 6
 
 local function wipe(tbl)
@@ -39,8 +39,11 @@ function LibEQOL_ColorOverridesMixin:Init(initializer)
 	self.categoryID = initializer.data.categoryID
 	self.entries = initializer.data.entries or {}
 	self.getColor = initializer.data.getColor
+	self.getColorMixin = initializer.data.getColorMixin
 	self.setColor = initializer.data.setColor
+	self.setColorMixin = initializer.data.setColorMixin
 	self.getDefaultColor = initializer.data.getDefaultColor
+	self.getDefaultColorMixin = initializer.data.getDefaultColorMixin
 	self.headerText = initializer.data.headerText or ""
 	self.rowHeight = initializer.data.rowHeight or DEFAULT_ROW_HEIGHT
 	self.basePadding = initializer.data.basePadding or DEFAULT_PADDING
@@ -111,8 +114,10 @@ end
 function LibEQOL_ColorOverridesMixin:SetupRow(frame, entry)
 	frame.data = entry
 	if frame.Text then
-		local r, g, b = frame.Text:GetTextColor()
-		frame._defaultTextColor = { r, g, b }
+		if not frame._defaultTextColor then
+			local r, g, b = frame.Text:GetTextColor()
+			frame._defaultTextColor = { r, g, b }
+		end
 		frame.Text:SetText(entry.label or entry.key or "?")
 	end
 	frame.colorizeLabel = self.colorizeLabel
@@ -132,30 +137,75 @@ function LibEQOL_ColorOverridesMixin:ApplyTextColor(frame)
 	if shouldColorize == nil then
 		shouldColorize = self.colorizeLabel
 	end
-	if not shouldColorize then
-		if frame._defaultTextColor then
-			frame.Text:SetTextColor(frame._defaultTextColor[1], frame._defaultTextColor[2], frame._defaultTextColor[3], 1)
+	local enabled = self._enabledState
+	if (enabled == false) or not shouldColorize then
+		local textColor = frame._defaultTextColor
+		if enabled == false then
+			textColor = { GRAY_FONT_COLOR:GetRGBA() }
+		end
+		if textColor then
+			frame.Text:SetTextColor(textColor[1], textColor[2], textColor[3], textColor[4] or 1)
 		end
 		return
 	end
-		local r, g, b = 0, 0, 0
-		if self.getColor then
-			r, g, b = self.getColor(frame.data.key)
-		end
-		if not (r and g and b) and frame.ColorSwatch and frame.ColorSwatch.Color then
-			r, g, b = frame.ColorSwatch.Color:GetVertexColor()
-		end
-		r, g, b = r or 1, g or 1, b or 1
-		frame.Text:SetTextColor(r, g, b, 1)
+	local r, g, b = 0, 0, 0
+	if self.ResolveColor then
+		r, g, b = self:ResolveColor(frame.data.key, false)
+	elseif self.getColor then
+		r, g, b = self.getColor(frame.data.key)
 	end
+	if not (r and g and b) and frame.ColorSwatch and frame.ColorSwatch.Color then
+		r, g, b = frame.ColorSwatch.Color:GetVertexColor()
+	end
+	r, g, b = r or 1, g or 1, b or 1
+	frame.Text:SetTextColor(r, g, b, 1)
+end
+
+local function colorFromAny(color)
+	if not color then
+		return
+	end
+	if type(color) == "table" and color.GetRGBA then
+		return color:GetRGBA()
+	end
+	if type(color) == "table" then
+		return color.r, color.g, color.b, color.a
+	end
+end
+
+function LibEQOL_ColorOverridesMixin:ResolveColor(key, useDefault)
+	local r, g, b, a
+	if useDefault then
+		r, g, b, a = colorFromAny(self.getDefaultColorMixin and self.getDefaultColorMixin(key))
+		if not r and self.getDefaultColor then
+			r, g, b, a = self.getDefaultColor(key)
+		end
+	else
+		r, g, b, a = colorFromAny(self.getColorMixin and self.getColorMixin(key))
+		if not r and self.getColor then
+			r, g, b, a = self.getColor(key)
+		end
+	end
+	return r or 1, g or 1, b or 1, a
+end
+
+function LibEQOL_ColorOverridesMixin:ApplyColor(key, r, g, b, a)
+	-- Prefer mixin setter when provided; fall back to numeric setter.
+	if self.setColorMixin then
+		self.setColorMixin(key, CreateColor(r or 1, g or 1, b or 1, a ~= nil and a or 1))
+		return
+	end
+	if self.setColor then
+		self.setColor(key, r or 1, g or 1, b or 1, a)
+	end
+end
 
 function LibEQOL_ColorOverridesMixin:RefreshRow(frame)
-	if not (self.getColor and frame.ColorSwatch and frame.ColorSwatch.Color) then
+	if not (frame.ColorSwatch and frame.ColorSwatch.Color) then
 		return
 	end
-	local r, g, b = self.getColor(frame.data.key)
-	r, g, b = r or 1, g or 1, b or 1
-	frame.ColorSwatch.Color:SetVertexColor(r, g, b)
+	local r, g, b, a = self:ResolveColor(frame.data.key, false)
+	frame.ColorSwatch.Color:SetVertexColor(r, g, b, a or 1)
 	self:ApplyTextColor(frame)
 end
 
@@ -166,23 +216,24 @@ function LibEQOL_ColorOverridesMixin:RefreshAll()
 end
 
 function LibEQOL_ColorOverridesMixin:ResetToDefaults()
-	if not (self.getDefaultColor and self.setColor) then
+	if not (self.setColor or self.setColorMixin) then
+		return
+	end
+	if not (self.getDefaultColor or self.getDefaultColorMixin) then
 		return
 	end
 	for _, entry in ipairs(self.entries or {}) do
-		local r, g, b, a = self.getDefaultColor(entry.key)
-		r, g, b = r or 1, g or 1, b or 1
-		self.setColor(entry.key, r, g, b, a)
+		local r, g, b, a = self:ResolveColor(entry.key, true)
+		self:ApplyColor(entry.key, r, g, b, a)
 	end
 	self:RefreshAll()
 end
 
 function LibEQOL_ColorOverridesMixin:OpenColorPicker(frame)
-	if not self.setColor then
+	if not (self.setColor or self.setColorMixin) then
 		return
 	end
-	local currentR, currentG, currentB, currentA = self.getColor(frame.data.key)
-	currentR, currentG, currentB = currentR or 1, currentG or 1, currentB or 1
+	local currentR, currentG, currentB, currentA = self:ResolveColor(frame.data.key, false)
 	local hasOpacity = self.hasOpacity
 	if hasOpacity then
 		currentA = currentA or 1
@@ -191,7 +242,7 @@ function LibEQOL_ColorOverridesMixin:OpenColorPicker(frame)
 	end
 
 	local function apply(r, g, b, a)
-		self.setColor(frame.data.key, r, g, b, hasOpacity and a or nil)
+		self:ApplyColor(frame.data.key, r, g, b, hasOpacity and a or nil)
 		self:RefreshRow(frame)
 	end
 
@@ -234,6 +285,7 @@ function LibEQOL_ColorOverridesMixin:EvaluateState()
 	if self.parentCheck then
 		enabled = self.parentCheck()
 	end
+	self._enabledState = enabled
 
 	for _, frame in ipairs(self.colorOverrideFrames or {}) do
 		if frame.ColorSwatch then
