@@ -1672,8 +1672,8 @@ local function buildColor()
 	end
 
 	function mixin:SetColor(r, g, b, a)
-		self.r, self.g, self.b, self.a = r, g, b, a
-		self.Swatch:SetColorTexture(r, g, b, 1)
+			self.r, self.g, self.b, self.a = r, g, b, a
+			self.Swatch:SetColorTexture(r, g, b, a or 1)
 	end
 
 	function mixin:OnClick()
@@ -1805,8 +1805,8 @@ local function buildCheckboxColor()
 	end
 
 	function mixin:SetColor(r, g, b, a)
-		self.r, self.g, self.b, self.a = r, g, b, a
-		self.Swatch:SetColorTexture(r, g, b, 1)
+			self.r, self.g, self.b, self.a = r, g, b, a
+			self.Swatch:SetColorTexture(r, g, b, a or 1)
 	end
 
 	function mixin:OnCheckboxClick()
@@ -1993,8 +1993,8 @@ local function buildDropdownColor()
 	end
 
 	function mixin:SetColor(r, g, b, a)
-		self.r, self.g, self.b, self.a = r, g, b, a
-		self.Swatch:SetColorTexture(r, g, b, 1)
+			self.r, self.g, self.b, self.a = r, g, b, a
+			self.Swatch:SetColorTexture(r, g, b, a or 1)
 	end
 
 	function mixin:OnColorClick()

@@ -204,8 +204,8 @@ function LibEQOL_ColorOverridesMixin:RefreshRow(frame)
 	if not (frame.ColorSwatch and frame.ColorSwatch.Color) then
 		return
 	end
-	local r, g, b = self:ResolveColor(frame.data.key, false)
-	frame.ColorSwatch.Color:SetVertexColor(r, g, b)
+	local r, g, b, a = self:ResolveColor(frame.data.key, false)
+	frame.ColorSwatch.Color:SetVertexColor(r, g, b, a or 1)
 	self:ApplyTextColor(frame)
 end
 
