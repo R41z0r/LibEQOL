@@ -115,6 +115,17 @@ Internal.managerExtraFrames = Internal.managerExtraFrames
 		"MainStatusTrackingBarContainer",
 		"SecondaryStatusTrackingBarContainer",
 		"PlayerCastingBarFrame",
+		-- Midnight only now
+		"PersonalResourceDisplayFrame",
+		"EncounterTimeline",
+		"DamageMeter",
+		"CriticalEncounterWarnings",
+		"MediumEncounterWarnings",
+		"MinorEncounterWarnings",
+		"MirrorTimerContainer",
+		"ArcheologyDigsideProgressBar",
+		"VehicleSeatIndicator",
+		"ExternalDefensivesFrame",
 	}
 Internal.managerHiddenFrames = Internal.managerHiddenFrames or {}
 Internal.managerEyeLocales = Internal.managerEyeLocales
