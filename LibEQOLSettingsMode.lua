@@ -1,4 +1,4 @@
-local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 7011001
+local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 8001002
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -307,6 +307,45 @@ local function refreshCategoryCache()
 	for _, category in pairs(categories) do
 		cacheCategory(category)
 	end
+end
+
+local function normalizeCategoryName(text)
+	if type(text) ~= "string" then
+		return nil
+	end
+	return text:lower():gsub("[%W_]+", "")
+end
+
+local function collectCategories()
+	local list = {}
+	local seen = {}
+	if State.categoryCacheByName then
+		for _, category in pairs(State.categoryCacheByName) do
+			if category and not seen[category] then
+				list[#list + 1] = category
+				seen[category] = true
+			end
+		end
+	end
+	for _, category in pairs(State.categories) do
+		if category and not seen[category] then
+			list[#list + 1] = category
+			seen[category] = true
+		end
+	end
+	return list
+end
+
+local function makeCategoryResult(category)
+	if not category then
+		return nil
+	end
+	local name = category.GetName and category:GetName()
+	local id = category.GetID and category:GetID()
+	if name == nil and id == nil then
+		return nil
+	end
+	return { name = name, id = id }
 end
 
 local function registerCategory(name, parent, sort, newTagID, prefixOverride)
@@ -1192,18 +1231,160 @@ function lib:GetCategory(name)
 	return State.categories[name]
 end
 
-function lib:GetCategoryByName(name)
+local function scoreCategoryName(query, normalizedQuery, lowerQuery, candidateName)
+	if not candidateName then
+		return nil
+	end
+
+	if candidateName == query then
+		return 0
+	end
+
+	local candidateLower = candidateName:lower()
+	if lowerQuery and candidateLower == lowerQuery then
+		return 1
+	end
+
+	local candidateNormalized = normalizeCategoryName(candidateName)
+	if candidateNormalized and normalizedQuery then
+		if candidateNormalized == normalizedQuery then
+			return 2
+		end
+
+		local startIndex = candidateNormalized:find(normalizedQuery, 1, true)
+		if startIndex == 1 then
+			return 3 -- prefix match
+		end
+		if startIndex then
+			return 4 -- substring match
+		end
+	end
+end
+
+function lib:GetCategoryByName(name, fuzzy)
 	if name == nil then
 		return nil
 	end
 
+	local opts = nil
+	if fuzzy == true then
+		opts = { fuzzy = true }
+	elseif type(fuzzy) == "table" then
+		opts = fuzzy
+	end
+	local wantFuzzy = opts and opts.fuzzy
+	local wantMultiple = opts and (opts.multiple or opts.returnAll)
+
 	refreshCategoryCache()
 	local category = State.categoryCacheByName and State.categoryCacheByName[name]
-	if category then
+	if category and not wantFuzzy then
 		return category
 	end
 
-	return State.categories[name]
+	if not wantFuzzy then
+		return State.categories[name]
+	end
+
+	local normalizedQuery = normalizeCategoryName(name)
+	local lowerQuery = type(name) == "string" and name:lower() or nil
+	if not normalizedQuery and not lowerQuery then
+		return nil
+	end
+
+	local best, bestScore, bestLen
+	local results = wantMultiple and {} or nil
+	for _, cat in ipairs(collectCategories()) do
+		local candidateName = cat.GetName and cat:GetName()
+		local score = scoreCategoryName(name, normalizedQuery, lowerQuery, candidateName)
+		if score then
+			if wantMultiple then
+				results[#results + 1] = cat
+			else
+				local len = candidateName and #candidateName or math.huge
+				if not best or score < bestScore or (score == bestScore and len < bestLen) then
+					best, bestScore, bestLen = cat, score, len
+				end
+			end
+		end
+	end
+
+	if wantMultiple then
+		return results
+	end
+	return best
+end
+
+function lib:FindCategory(query, opts)
+	if query == nil then
+		return nil
+	end
+
+	opts = (type(opts) == "table") and opts or {}
+	local wantFuzzy = opts.fuzzy ~= false -- default on
+	local wantMultiple = opts.multiple ~= false -- default return all matches
+
+	refreshCategoryCache()
+
+	local normalizedQuery = wantFuzzy and normalizeCategoryName(query) or nil
+	local lowerQuery = type(query) == "string" and query:lower() or nil
+
+	local best, bestScore, bestLen
+	local results = wantMultiple and {} or nil
+	local seen = wantMultiple and {} or nil
+
+	for _, cat in ipairs(collectCategories()) do
+		local candidateName = cat.GetName and cat:GetName()
+		local score
+		if wantFuzzy then
+			score = scoreCategoryName(query, normalizedQuery, lowerQuery, candidateName)
+		else
+			if candidateName == query or (lowerQuery and candidateName and candidateName:lower() == lowerQuery) then
+				score = 0
+			end
+		end
+
+		if score then
+			if wantMultiple then
+				local entry = makeCategoryResult(cat)
+				if entry then
+					entry._score = score
+					entry._len = entry.name and #entry.name or math.huge
+					local key = tostring(entry.id or "") .. "|" .. tostring(entry.name or "")
+					if not seen[key] then
+						seen[key] = true
+						results[#results + 1] = entry
+					end
+				end
+			else
+				local len = candidateName and #candidateName or math.huge
+				if not best or score < bestScore or (score == bestScore and len < bestLen) then
+					best, bestScore, bestLen = cat, score, len
+				end
+			end
+		end
+	end
+
+	if wantMultiple then
+		table.sort(results, function(a, b)
+			if a._score ~= b._score then
+				return a._score < b._score
+			end
+			if a._len ~= b._len then
+				return a._len < b._len
+			end
+			if a.name ~= b.name then
+				return tostring(a.name or "") < tostring(b.name or "")
+			end
+			return tostring(a.id or "") < tostring(b.id or "")
+		end)
+		for i = 1, #results do
+			results[i]._score = nil
+			results[i]._len = nil
+		end
+		return results
+	end
+
+	return makeCategoryResult(best)
 end
 
 function lib:GetCategoryByID(id)
