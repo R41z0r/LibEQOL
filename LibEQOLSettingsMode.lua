@@ -1,4 +1,4 @@
-local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 7011000
+local MODULE_MAJOR, MINOR = "LibEQOLSettingsMode-1.0", 7011001
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 
@@ -105,6 +105,8 @@ local State = {
 	rootName = "LibEQOL Settings",
 	categories = {},
 	elements = {},
+	categoryCacheByID = {},
+	categoryCacheByName = {},
 	categoryTags = {},
 	categoryPrefixes = {},
 	settingPrefixes = {},
@@ -269,6 +271,44 @@ local function prefixTag(tag, explicitPrefix)
 	return tag
 end
 
+local function cacheCategory(category, name)
+	if not category then
+		return
+	end
+
+	local id = category.GetID and category:GetID()
+	if id ~= nil then
+		State.categoryCacheByID[id] = category
+		if type(id) == "number" then
+			State.categoryCacheByID[tostring(id)] = category
+		elseif type(id) == "string" then
+			local numeric = tonumber(id)
+			if numeric then
+				State.categoryCacheByID[numeric] = State.categoryCacheByID[numeric] or category
+			end
+		end
+	end
+
+	local resolvedName = name or (category.GetName and category:GetName())
+	if resolvedName then
+		State.categoryCacheByName[resolvedName] = category
+	end
+end
+
+local function refreshCategoryCache()
+	if not (SettingsPanel and SettingsPanel.GetAllCategories) then
+		return
+	end
+	local ok, categories = pcall(SettingsPanel.GetAllCategories, SettingsPanel)
+	if not ok or type(categories) ~= "table" then
+		return
+	end
+
+	for _, category in pairs(categories) do
+		cacheCategory(category)
+	end
+end
+
 local function registerCategory(name, parent, sort, newTagID, prefixOverride)
 	local categoryPrefix = prefixOverride or (State.prefixSet and State.prefix) or nil
 	newTagID = prefixTag(newTagID, categoryPrefix)
@@ -279,6 +319,7 @@ local function registerCategory(name, parent, sort, newTagID, prefixOverride)
 		cat._LibEQOLNewTagID = newTagID
 		State.categoryTags[cat:GetID()] = newTagID
 		State.categoryPrefixes[cat:GetID()] = categoryPrefix
+		cacheCategory(cat, name)
 		return cat, layout
 	end
 	local cat, layout = Settings.RegisterVerticalLayoutSubcategory(parent, name)
@@ -287,6 +328,7 @@ local function registerCategory(name, parent, sort, newTagID, prefixOverride)
 	cat._LibEQOLNewTagID = newTagID
 	State.categoryTags[cat:GetID()] = newTagID
 	State.categoryPrefixes[cat:GetID()] = categoryPrefix
+	cacheCategory(cat, name)
 	return cat, layout
 end
 
@@ -1148,6 +1190,46 @@ end
 
 function lib:GetCategory(name)
 	return State.categories[name]
+end
+
+function lib:GetCategoryByName(name)
+	if name == nil then
+		return nil
+	end
+
+	refreshCategoryCache()
+	local category = State.categoryCacheByName and State.categoryCacheByName[name]
+	if category then
+		return category
+	end
+
+	return State.categories[name]
+end
+
+function lib:GetCategoryByID(id)
+	if id == nil then
+		return nil
+	end
+
+	refreshCategoryCache()
+	local cache = State.categoryCacheByID
+	if not cache then
+		return nil
+	end
+
+	local category = cache[id]
+	if category then
+		return category
+	end
+
+	if type(id) == "number" then
+		return cache[tostring(id)]
+	elseif type(id) == "string" then
+		local numeric = tonumber(id)
+		if numeric then
+			return cache[numeric] or cache[tostring(numeric)]
+		end
+	end
 end
 
 function lib:GetElement(key)
