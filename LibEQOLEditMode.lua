@@ -2168,7 +2168,8 @@ local function buildSlider()
 			if data.allowInput then
 				self.Input:Show()
 				self.Input:SetNumeric(false)
-				self.Input:SetText(tostring(current or ""))
+				local fmt = self.formatters and self.formatters[MinimalSliderWithSteppersMixin.Label.Right]
+				self.Input:SetText(fmt and fmt(current) or tostring(current or ""))
 				if self.Slider.RightText then
 					self.Slider.RightText:Hide()
 				end
@@ -2193,7 +2194,8 @@ local function buildSlider()
 				Internal:RefreshSettings()
 			end
 			if self.Input and self.Input:IsShown() then
-				self.Input:SetText(tostring(value))
+				local fmt = self.formatters and self.formatters[MinimalSliderWithSteppersMixin.Label.Right]
+				self.Input:SetText(fmt and fmt(value) or tostring(value))
 				if self.Slider.RightText and self.Slider.RightText:IsShown() then
 					self.Slider.RightText:Hide()
 				end
@@ -2249,9 +2251,10 @@ local function buildSlider()
 			if step <= 0 then
 				step = 0
 			end
-			local val = tonumber(box:GetText())
+			local val = tonumber((box:GetText() or ""):gsub(",", "."))
 			if not val then
-				box:SetText(tostring(owner.currentValue or ""))
+				local fmt = owner.formatters and owner.formatters[MinimalSliderWithSteppersMixin.Label.Right]
+				box:SetText(fmt and owner.currentValue and fmt(owner.currentValue) or tostring(owner.currentValue or ""))
 				return
 			end
 			if val < minV then
@@ -2269,7 +2272,8 @@ local function buildSlider()
 					val = maxV
 				end
 			end
-			owner.Input:SetText(val)
+			local fmt = owner.formatters and owner.formatters[MinimalSliderWithSteppersMixin.Label.Right]
+			owner.Input:SetText(fmt and fmt(val) or tostring(val))
 			owner.currentValue = val
 			owner.Slider:SetValue(val)
 			owner.setting.set(lib.activeLayoutName, val, lib:GetActiveLayoutIndex())
