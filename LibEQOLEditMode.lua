@@ -2251,7 +2251,8 @@ local function buildSlider()
 			if step <= 0 then
 				step = 0
 			end
-			local val = tonumber((box:GetText() or ""):gsub(",", "."))
+			local inputText = (box:GetText() or ""):gsub(",", ".")
+			local val = tonumber(inputText)
 			if not val then
 				local fmt = owner.formatters and owner.formatters[MinimalSliderWithSteppersMixin.Label.Right]
 				box:SetText(fmt and owner.currentValue and fmt(owner.currentValue) or tostring(owner.currentValue or ""))
