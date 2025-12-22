@@ -29,7 +29,15 @@ Use the published action in this repo to pull the latest LibEQOL release ZIP dur
     destination: EnhanceQoL/libs   # results in EnhanceQoL/libs/LibEQOL
 ```
 
-Optional inputs: `repo` (defaults to this repo) and `github-token` (defaults to `github.token`). Outputs: `tag` and `asset_url` from the resolved release.
+Optional inputs: `modules` (v2+: `editmode`, `settings`, or `all`, defaults to all), `repo` (defaults to this repo), and `github-token` (defaults to `github.token`). Outputs: `tag` and `asset_url` from the resolved release. Example for the v2 action filtering to EditMode only:
+
+```
+- name: Install LibEQOL (EditMode only)
+  uses: R41z0r/LibEQOL@v2
+  with:
+    destination: EnhanceQoL/libs
+    modules: editmode
+```
 
 ## Architecture
 
@@ -104,6 +112,7 @@ end)
 - `SetFrameDragEnabled(frame, enabledOrPredicate)` – allow/deny drag + keyboard nudging for a frame; pass a boolean or function `(layoutName, layoutIndex)`; `nil` removes the override. You can also set `defaultPosition.allowDrag`/`dragEnabled` on `AddFrame`.
 - `SetFrameOverlayToggleEnabled(frame, enabled)` – show/hide the eye-button for that frame; default is disabled until you opt-in.
 - `SetFrameCollapseExclusive(frame, enabled)` – make collapsible headers on this frame exclusive (expanding one collapses the others). You can also set `defaultPosition.collapseExclusive` (alias `exclusiveCollapse`) on `AddFrame`.
+- Default visibility flags on `AddFrame`: `default.showReset = false` hides the Reset Position button; `default.showSettingsReset = false` hides the Settings Reset button for that frame.
 - `RegisterCallback(event, callback)` – `event` is `"enter"`, `"exit"`, `"layout"`, `"layoutadded"`, `"layoutdeleted"`, `"layoutrenamed"`, `"layoutduplicate"`, or `"spec"`; `layout` callbacks receive `(layoutName, layoutIndex)`; `layoutadded` receives `(addedLayoutIndex, activateNewLayout, isLayoutImported, layoutType, layoutName)`; `layoutdeleted` receives `(deletedLayoutIndex, deletedLayoutName)` using the cached name from before the refresh; `layoutrenamed` receives `(oldName, newName, layoutIndex)` where `layoutIndex` is the UI index (custom layouts are offset by +2); `layoutduplicate` receives `(addedLayoutIndex, duplicateIndices, isLayoutImported, layoutType, layoutName)` (name is the new layout once, not per duplicate); `spec` receives the current spec index (from `GetSpecialization()`).
 - `GetActiveLayoutName()` / `GetActiveLayoutIndex()` / `IsInEditMode()` – query current state.
 - `GetLayouts()` – returns an array of `{ index, name, layoutType, isActive }` for UI indices (1/2 use `LAYOUT_STYLE_MODERN` / `LAYOUT_STYLE_CLASSIC` and `Enum.EditModeLayoutType.Modern` / `Enum.EditModeLayoutType.Classic` when available); `isActive` is `1` for the active layout, else `0`.
