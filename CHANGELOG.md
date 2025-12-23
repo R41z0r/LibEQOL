@@ -1,5 +1,20 @@
 # Changelog
 
+## [9] - 2025-12-23
+
+Added:
+- Settings: Per-option tooltips for dropdowns (single, scroll, checkbox+dropdown) via option tables (`tooltip`/`desc`/`description`), including forwarded `disabled`/`warning`/`recommend`/`onEnter`.
+- Docs: Documented per-option tooltip support for dropdowns.
+
+## [8] - 2025-12-22
+
+Added:
+- EditMode: Additional frames included in the manager "eye" hide list (Midnight frames).
+- Settings: Category lookup/search helpers (`GetCategoryByID`, `GetCategoryByName`, `FindCategory`).
+
+Fixed:
+- Settings: Slider input and formatter bugs; slider updates are now debounced.
+
 ## [7] - 2025-12-12
 
 Added:
