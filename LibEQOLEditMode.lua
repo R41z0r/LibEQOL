@@ -1,4 +1,4 @@
-local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 9000000
+local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 7001001
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 local C_Timer = _G.C_Timer
@@ -423,11 +423,12 @@ local function resolveOptions(data, layoutName)
 	return {}
 end
 
-local function evaluateVisibility(data)
+local function evaluateVisibility(data, layoutName, layoutIndex)
 	if not data then
 		return true
 	end
-	local layoutName, layoutIndex = lib.activeLayoutName, lib:GetActiveLayoutIndex()
+	if layoutName == nil then layoutName = lib.activeLayoutName end
+	if layoutIndex == nil then layoutIndex = lib:GetActiveLayoutIndex() end
 	if data.isShown then
 		local ok, result = pcall(data.isShown, layoutName, layoutIndex)
 		if ok and result == false then
@@ -440,6 +441,10 @@ local function evaluateVisibility(data)
 		end
 	end
 	return true
+end
+
+local function evaluateVisibilityFast(data, layoutName, layoutIndex)
+	return evaluateVisibility(data, layoutName, layoutIndex)
 end
 
 local function updateLabelVisibility(selection, hidden)
@@ -1274,7 +1279,7 @@ local function buildCheckbox()
 		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
 		self.checked = not self.checked
 		self.setting.set(lib.activeLayoutName, not not self.checked, lib:GetActiveLayoutIndex())
-		Internal:RefreshSettings()
+		Internal:RequestRefreshSettings()
 	end
 
 	function mixin:SetEnabled(enabled)
@@ -1299,7 +1304,7 @@ end
 local function dropdownSet(data)
 	local val = data.value ~= nil and data.value or data.text
 	data.set(lib.activeLayoutName, val, lib:GetActiveLayoutIndex())
-	Internal:RefreshSettings()
+	Internal:RequestRefreshSettings()
 end
 
 local function buildDropdown()
@@ -1488,7 +1493,7 @@ local function buildMultiDropdown()
 			map[value] = shouldSelect and true or nil
 			self.setting.set(lib.activeLayoutName, map, lib:GetActiveLayoutIndex())
 		end
-		Internal:RefreshSettings()
+		Internal:RequestRefreshSettings()
 	end
 
 	function mixin:ToggleOption(value)
@@ -1828,7 +1833,7 @@ local function buildCheckboxColor()
 			self.setting.set(lib.activeLayoutName, self.checked, lib:GetActiveLayoutIndex())
 		end
 		self:UpdateColorEnabled()
-		Internal:RefreshSettings()
+		Internal:RequestRefreshSettings()
 	end
 
 	function mixin:OnColorClick()
@@ -1965,7 +1970,7 @@ local function buildDropdownColor()
 			local function makeSetter(value)
 				return function()
 					data.set(lib.activeLayoutName, value, lib:GetActiveLayoutIndex())
-					Internal:RefreshSettings()
+					Internal:RequestRefreshSettings()
 				end
 			end
 			if data.values then
@@ -2027,7 +2032,7 @@ local function buildDropdownColor()
 					and (ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a)
 				self:SetColor(r, g, b, a)
 				apply(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
-				Internal:RefreshSettings()
+				Internal:RequestRefreshSettings()
 			end,
 			opacityFunc = function()
 				if not self.hasOpacity then
@@ -2037,7 +2042,7 @@ local function buildDropdownColor()
 				local a = ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a
 				self:SetColor(r, g, b, a)
 				apply(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
-				Internal:RefreshSettings()
+				Internal:RequestRefreshSettings()
 			end,
 			cancelFunc = function()
 				self:SetColor(prev.r, prev.g, prev.b, prev.a)
@@ -2046,7 +2051,7 @@ local function buildDropdownColor()
 					{ r = prev.r, g = prev.g, b = prev.b, a = prev.a },
 					lib:GetActiveLayoutIndex()
 				)
-				Internal:RefreshSettings()
+				Internal:RequestRefreshSettings()
 			end,
 		})
 	end
@@ -2391,6 +2396,7 @@ local function buildCollapsible()
 				local newState = not self.collapsed
 				self.collapsed = newState
 				updateIcon(newState)
+				local touched = { data }
 				if data.setCollapsed then
 					data.setCollapsed(lib.activeLayoutName, newState, lib:GetActiveLayoutIndex())
 				elseif selectionParent then
@@ -2407,12 +2413,13 @@ local function buildCollapsible()
 								elseif selectionParent then
 									Collapse:Set(selectionParent, otherId, true)
 								end
+								touched[#touched + 1] = other
 							end
 						end
 					end
 				end
 				Internal:RefreshSettings()
-				Internal:RefreshSettingValues()
+				Internal:RefreshSettingValues(touched)
 			end)
 		end
 
@@ -2537,6 +2544,8 @@ end
 function Dialog:UpdateSettings()
 	Pools:ReleaseAll()
 	local settings, num = Internal:GetFrameSettings(self.selection.parent)
+	local layoutName = lib.activeLayoutName
+	local layoutIndex = lib:GetActiveLayoutIndex()
 	local collapsedById = {}
 	if num > 0 then
 		for _, data in next, settings do
@@ -2550,7 +2559,7 @@ function Dialog:UpdateSettings()
 					collapsed = not not data.defaultCollapsed
 				end
 				if data.getCollapsed then
-					local ok, val = pcall(data.getCollapsed, lib.activeLayoutName, lib:GetActiveLayoutIndex())
+					local ok, val = pcall(data.getCollapsed, layoutName, layoutIndex)
 					if ok and val ~= nil then
 						collapsed = not not val
 					end
@@ -2565,17 +2574,17 @@ function Dialog:UpdateSettings()
 				local setting = pool:Acquire(self.Settings)
 				setting.layoutIndex = index
 				setting:Setup(data, self.selection)
-				local visible = evaluateVisibility(data)
+				local visible = evaluateVisibility(data, layoutName, layoutIndex)
 				if data.parentId and collapsedById[data.parentId] then
 					visible = false
 				end
 				if setting.SetEnabled then
 					local enabled = true
 					if data.isEnabled then
-						local ok, result = pcall(data.isEnabled, lib.activeLayoutName, lib:GetActiveLayoutIndex())
+						local ok, result = pcall(data.isEnabled, layoutName, layoutIndex)
 						enabled = ok and result ~= false
 					elseif data.disabled then
-						local ok, result = pcall(data.disabled, lib.activeLayoutName, lib:GetActiveLayoutIndex())
+						local ok, result = pcall(data.disabled, layoutName, layoutIndex)
 						enabled = not (ok and result == true)
 					end
 					setting:SetEnabled(enabled)
@@ -3470,51 +3479,59 @@ function Internal:RequestRefreshSettings()
 		self:RefreshSettings()
 		return
 	end
-	C_Timer.After(0, function()
-		self._refreshQueued = false
-		self:RefreshSettings()
-	end)
+	Internal._refreshRunner = Internal._refreshRunner or function()
+		Internal._refreshQueued = false
+		Internal:RefreshSettings()
+	end
+	C_Timer.After(0, Internal._refreshRunner)
 end
 
+
 function Internal:RefreshSettings()
-	if not (Internal.dialog and Internal.dialog:IsShown()) then
-		return
-	end
+	if not (Internal.dialog and Internal.dialog:IsShown()) then return end
 	local parent = Internal.dialog.Settings
-	if not parent then
-		return
-	end
+	if not parent then return end
 	local selectionParent = Internal.dialog.selection and Internal.dialog.selection.parent
+	local layoutName = lib.activeLayoutName
+	local layoutIndex = lib:GetActiveLayoutIndex()
+	local layoutDirty = false
 	for _, child in ipairs({ parent:GetChildren() }) do
 		if child.SetEnabled and child.setting then
 			local data = child.setting
 			local enabled = true
 			if data.isEnabled then
-				local ok, result = pcall(data.isEnabled, lib.activeLayoutName, lib:GetActiveLayoutIndex())
+				local ok, result = pcall(data.isEnabled, layoutName, layoutIndex)
 				enabled = ok and result ~= false
 			elseif data.disabled then
-				local ok, result = pcall(data.disabled, lib.activeLayoutName, lib:GetActiveLayoutIndex())
+				local ok, result = pcall(data.disabled, layoutName, layoutIndex)
 				enabled = not (ok and result == true)
 			end
-			child:SetEnabled(enabled)
+			if child._eqolEnabled ~= enabled then
+				child._eqolEnabled = enabled
+				child:SetEnabled(enabled)
+			end
 
-			local collapsedParent = (data.kind ~= lib.SettingType.Collapsible)
-				and data.parentId
-				and Collapse:Get(selectionParent, data.parentId)
-			local visible = evaluateVisibility(data) and not collapsedParent
-			child.ignoreInLayout = not visible
-			if visible then
-				child:Show()
-			else
-				child:Hide()
+			local collapsedParent = (data.kind ~= lib.SettingType.Collapsible) and data.parentId and Collapse:Get(selectionParent, data.parentId)
+			local visible = evaluateVisibilityFast(data, layoutName, layoutIndex) and not collapsedParent
+			local wantIgnore = not visible
+			local haveIgnore = child.ignoreInLayout == true
+			if wantIgnore ~= haveIgnore then
+				child.ignoreInLayout = wantIgnore
+				layoutDirty = true
+			end
+			if visible ~= child:IsShown() then
+				if visible then
+					child:Show()
+				else
+					child:Hide()
+				end
+				layoutDirty = true
 			end
 		end
 	end
-	if parent.Layout then
-		parent:Layout()
-	end
-	if Internal.dialog and Internal.dialog.Layout then
-		Internal.dialog:Layout()
+	if layoutDirty then
+		if parent.Layout then parent:Layout() end
+		if Internal.dialog and Internal.dialog.Layout then Internal.dialog:Layout() end
 	end
 end
 
@@ -3531,6 +3548,8 @@ function Internal:RefreshSettingValues(targetSettings)
 		return
 	end
 	local selectionParent = selection.parent
+	local layoutName = lib.activeLayoutName
+	local layoutIndex = lib:GetActiveLayoutIndex()
 	local settings, num = Internal:GetFrameSettings(selection.parent)
 	if not settings or num == 0 then
 		return
@@ -3567,17 +3586,17 @@ function Internal:RefreshSettingValues(targetSettings)
 			if child.SetEnabled then
 				local enabled = true
 				if data.isEnabled then
-					local ok, result = pcall(data.isEnabled, lib.activeLayoutName, lib:GetActiveLayoutIndex())
+					local ok, result = pcall(data.isEnabled, layoutName, layoutIndex)
 					enabled = ok and result ~= false
 				elseif data.disabled then
-					local ok, result = pcall(data.disabled, lib.activeLayoutName, lib:GetActiveLayoutIndex())
+					local ok, result = pcall(data.disabled, layoutName, layoutIndex)
 					enabled = not (ok and result == true)
 				end
 				child:SetEnabled(enabled)
 			end
 			local collapsed = (data.kind ~= lib.SettingType.Collapsible)
 				and Collapse:Get(selectionParent, data.parentId)
-			local visible = evaluateVisibility(data) and not collapsed
+			local visible = evaluateVisibility(data, layoutName, layoutIndex) and not collapsed
 			if visible then
 				child.ignoreInLayout = nil
 				child:Show()
