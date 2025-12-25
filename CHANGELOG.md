@@ -1,5 +1,10 @@
 # Changelog
 
+## [10] - 2025-12-25
+
+Fixed:
+- EditMode: Settings refresh is now debounced and avoids redundant layout/enable/visibility updates to improve performance.
+
 ## [9] - 2025-12-23
 
 Added:
