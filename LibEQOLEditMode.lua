@@ -44,6 +44,9 @@ local State = {
 	settingsResetToggles = lib.settingsResetToggles or {},
 	collapseFlags = lib.collapseFlags or {},
 	collapseExclusiveFlags = lib.collapseExclusiveFlags or {},
+	settingsSpacingOverrides = lib.settingsSpacingOverrides or {},
+	sliderHeightOverrides = lib.sliderHeightOverrides or {},
+	rowHeightOverrides = lib.rowHeightOverrides or {},
 	widgetPools = lib.widgetPools or {},
 	overlayToggleFlags = lib.overlayToggleFlags or {},
 	dragPredicates = lib.dragPredicates or {},
@@ -60,10 +63,93 @@ lib.resetToggles = State.resetToggles
 lib.settingsResetToggles = State.settingsResetToggles
 lib.collapseFlags = State.collapseFlags
 lib.collapseExclusiveFlags = State.collapseExclusiveFlags
+lib.settingsSpacingOverrides = State.settingsSpacingOverrides
+lib.sliderHeightOverrides = State.sliderHeightOverrides
+lib.rowHeightOverrides = State.rowHeightOverrides
 lib.widgetPools = State.widgetPools
 lib.overlayToggleFlags = State.overlayToggleFlags
 lib.dragPredicates = State.dragPredicates
 lib.pendingDeletedLayouts = State.pendingDeletedLayouts
+
+local DEFAULT_SETTINGS_SPACING = 2
+local DEFAULT_SLIDER_HEIGHT = 32
+
+local function normalizeSpacing(value, fallback)
+	local numberValue = tonumber(value)
+	if numberValue == nil or numberValue < 0 then
+		return fallback
+	end
+	return numberValue
+end
+
+local function normalizePositive(value, fallback)
+	local numberValue = tonumber(value)
+	if numberValue == nil or numberValue <= 0 then
+		return fallback
+	end
+	return numberValue
+end
+
+local function setRowHeightOverride(frame, kind, value)
+	if not frame then
+		return
+	end
+	local normalized = normalizePositive(value, nil)
+	local overrides = State.rowHeightOverrides[frame]
+	if normalized == nil then
+		if overrides then
+			overrides[kind] = nil
+			if next(overrides) == nil then
+				State.rowHeightOverrides[frame] = nil
+			end
+		end
+		return
+	end
+	if not overrides then
+		overrides = {}
+		State.rowHeightOverrides[frame] = overrides
+	end
+	overrides[kind] = normalized
+end
+
+local function getRowHeightOverride(frame, kind)
+	local overrides = frame and State.rowHeightOverrides[frame]
+	if overrides then
+		return overrides[kind]
+	end
+end
+
+local function applyRowHeightOverride(frame, selectionParent, kind)
+	if not frame then
+		return
+	end
+	local height = getRowHeightOverride(selectionParent, kind)
+	if height then
+		frame.fixedHeight = height
+		frame:SetHeight(height)
+	end
+	return height
+end
+
+local function getFrameSettingsSpacing(frame)
+	if not frame then
+		return DEFAULT_SETTINGS_SPACING
+	end
+	local override = State.settingsSpacingOverrides[frame]
+	return normalizeSpacing(override, DEFAULT_SETTINGS_SPACING)
+end
+
+local function getFrameSliderHeight(frame)
+	if not frame then
+		return DEFAULT_SLIDER_HEIGHT
+	end
+	local override = getRowHeightOverride(frame, "slider")
+	if override then
+		return normalizePositive(override, DEFAULT_SLIDER_HEIGHT)
+	end
+	local legacy = State.sliderHeightOverrides[frame]
+	return normalizePositive(legacy, DEFAULT_SLIDER_HEIGHT)
+end
 
 -- Blizzard frames we also toggle via the manager eye (if they exist)
 Internal.managerExtraFrames = Internal.managerExtraFrames
@@ -1263,9 +1349,10 @@ local SUMMARY_CHAR_LIMIT = 80
 local function buildCheckbox()
 	local mixin = {}
 
-	function mixin:Setup(data)
+	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
+		applyRowHeightOverride(self, selection and selection.parent, "checkbox")
 		local value = data.get(lib.activeLayoutName, lib:GetActiveLayoutIndex())
 		if value == nil then
 			value = data.default
@@ -1310,10 +1397,11 @@ end
 local function buildDropdown()
 	local mixin = {}
 
-	function mixin:Setup(data)
+	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
 		self.ignoreInLayout = nil
+		applyRowHeightOverride(self, selection and selection.parent, "dropdown")
 
 		if data.useOldStyle and self.OldDropdown then
 			self.Control:Hide()
@@ -1394,12 +1482,13 @@ end
 local function buildMultiDropdown()
 	local mixin = {}
 
-	function mixin:Setup(data)
+	function mixin:Setup(data, selection)
 		self.setting = data
 		self.ignoreInLayout = nil
 		self.summaryAnchored = nil
 		self.summaryMeasure = nil
 		self.hideSummary = data.hideSummary or data.noSummary or data.summary == false
+		local selectionParent = selection and selection.parent
 
 		local defaultText
 		if data.customText ~= nil then
@@ -1434,6 +1523,21 @@ local function buildMultiDropdown()
 		end
 
 		local targetHeight = self.hideSummary and 32 or 48
+		local override
+		if self.hideSummary then
+			override = getRowHeightOverride(selectionParent, "multiDropdown")
+			if not override then
+				override = getRowHeightOverride(selectionParent, "dropdown")
+			end
+		else
+			override = getRowHeightOverride(selectionParent, "multiDropdownSummary")
+			if not override then
+				override = getRowHeightOverride(selectionParent, "multiDropdown")
+			end
+		end
+		if override then
+			targetHeight = override
+		end
 		self.fixedHeight = targetHeight
 		self:SetHeight(targetHeight)
 		if self.hideSummary and self.Summary then
@@ -1679,10 +1783,11 @@ end
 local function buildColor()
 	local mixin = {}
 
-	function mixin:Setup(data)
+	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
 		self.ignoreInLayout = nil
+		applyRowHeightOverride(self, selection and selection.parent, "color")
 		local r, g, b, a = normalizeColor(data.get(lib.activeLayoutName, lib:GetActiveLayoutIndex()) or data.default)
 		self.hasOpacity = not not (data.hasOpacity or a)
 		self:SetColor(r, g, b, a)
@@ -1783,10 +1888,17 @@ end
 local function buildCheckboxColor()
 	local mixin = {}
 
-	function mixin:Setup(data)
+	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
 		self.ignoreInLayout = nil
+		local selectionParent = selection and selection.parent
+		local override = getRowHeightOverride(selectionParent, "checkboxColor")
+			or getRowHeightOverride(selectionParent, "color")
+		if override then
+			self.fixedHeight = override
+			self:SetHeight(override)
+		end
 
 		local value = data.get and data.get(lib.activeLayoutName, lib:GetActiveLayoutIndex())
 		if value == nil then
@@ -1937,10 +2049,17 @@ end
 local function buildDropdownColor()
 	local mixin = {}
 
-	function mixin:Setup(data)
+	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
 		self.ignoreInLayout = nil
+		local selectionParent = selection and selection.parent
+		local override = getRowHeightOverride(selectionParent, "dropdownColor")
+			or getRowHeightOverride(selectionParent, "dropdown")
+		if override then
+			self.fixedHeight = override
+			self:SetHeight(override)
+		end
 
 		if data.useOldStyle then
 			if self.OldDropdown then
@@ -2133,12 +2252,17 @@ end
 local function buildSlider()
 	local mixin = {}
 
-	function mixin:Setup(data)
+	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
 		self.ignoreInLayout = nil
 		self.initInProgress = true
 		self.formatters = {}
+		local sliderHeight = getFrameSliderHeight(selection and selection.parent)
+		if sliderHeight then
+			self.fixedHeight = sliderHeight
+			self:SetHeight(sliderHeight)
+		end
 		self.formatters[MinimalSliderWithSteppersMixin.Label.Right] =
 			CreateMinimalSliderFormatter(MinimalSliderWithSteppersMixin.Label.Right, data.formatter)
 
@@ -2225,7 +2349,7 @@ local function buildSlider()
 		local frame = CreateFrame("Frame", nil, UIParent, "EditModeSettingSliderTemplate")
 		Mixin(frame, mixin)
 
-		frame:SetHeight(32)
+		frame:SetHeight(DEFAULT_SLIDER_HEIGHT)
 		frame.Slider:SetWidth(200)
 		frame.Slider.MinText:Hide()
 		frame.Slider.MaxText:Hide()
@@ -2321,8 +2445,16 @@ local function buildDivider()
 		tex:SetAllPoints()
 		tex:SetTexture([[Interface\FriendsFrame\UI-FriendsFrame-OnlineDivider]])
 		frame.Divider = tex
-		function frame:Setup(data)
+		function frame:Setup(data, selection)
 			self.setting = data
+			local height = getRowHeightOverride(selection and selection.parent, "divider")
+			if height then
+				self.fixedHeight = height
+				self:SetHeight(height)
+				if self.Divider then
+					self.Divider:SetHeight(height)
+				end
+			end
 		end
 		return frame
 	end, function(_, frame)
@@ -2367,6 +2499,7 @@ local function buildCollapsible()
 			self.Label:SetText(data.name or "")
 
 			local selectionParent = selection and selection.parent
+			applyRowHeightOverride(self, selectionParent, "collapsible")
 			if not selectionParent and Internal.dialog and Internal.dialog.selection then
 				selectionParent = Internal.dialog.selection.parent
 			end
@@ -2518,9 +2651,23 @@ local function setResetVisibility(buttonsFrame, visible)
 	end
 end
 
+function Dialog:ApplyLayoutOverrides()
+	local selectionParent = self.selection and self.selection.parent
+	if self.Settings then
+		self.Settings.spacing = getFrameSettingsSpacing(selectionParent)
+		if self.Settings.Divider then
+			local height = getRowHeightOverride(selectionParent, "divider")
+			if height then
+				self.Settings.Divider:SetHeight(height)
+			end
+		end
+	end
+end
+
 function Dialog:Update(selection)
 	self.selection = selection
 	self.Title:SetText(selection.parent.editModeName or selection.parent:GetName())
+	self:ApplyLayoutOverrides()
 	local allowOverlayToggle = State.overlayToggleFlags[selection.parent] == true
 	if self.HideLabelButton then
 		if allowOverlayToggle then
@@ -2786,7 +2933,7 @@ function Internal:CreateDialog()
 
 	local dialogSettings = CreateFrame("Frame", nil, dialog, "VerticalLayoutFrame")
 	dialogSettings:SetPoint("TOP", dialogTitle, "BOTTOM", 0, -12)
-	dialogSettings.spacing = 2
+	dialogSettings.spacing = DEFAULT_SETTINGS_SPACING
 	dialog.Settings = dialogSettings
 
 	local resetSettingsButton = CreateFrame("Button", nil, dialogSettings, "EditModeSystemSettingsDialogButtonTemplate")
@@ -2801,7 +2948,7 @@ function Internal:CreateDialog()
 
 	local dialogButtons = CreateFrame("Frame", nil, dialog, "VerticalLayoutFrame")
 	dialogButtons:SetPoint("TOP", dialogSettings, "BOTTOM", 0, -12)
-	dialogButtons.spacing = 2
+	dialogButtons.spacing = DEFAULT_SETTINGS_SPACING
 	dialog.Buttons = dialogButtons
 
 	return dialog
@@ -3264,6 +3411,40 @@ function lib:AddFrame(frame, callback, default)
 		end
 		if default.showSettingsReset ~= nil then
 			State.settingsResetToggles[frame] = not not default.showSettingsReset
+		end
+		if default.settingsSpacing ~= nil then
+			State.settingsSpacingOverrides[frame] = normalizeSpacing(default.settingsSpacing, DEFAULT_SETTINGS_SPACING)
+		end
+		if default.sliderHeight ~= nil then
+			State.sliderHeightOverrides[frame] = normalizePositive(default.sliderHeight, DEFAULT_SLIDER_HEIGHT)
+			setRowHeightOverride(frame, "slider", default.sliderHeight)
+		end
+		if default.checkboxHeight ~= nil then
+			setRowHeightOverride(frame, "checkbox", default.checkboxHeight)
+		end
+		if default.dropdownHeight ~= nil then
+			setRowHeightOverride(frame, "dropdown", default.dropdownHeight)
+		end
+		if default.multiDropdownHeight ~= nil then
+			setRowHeightOverride(frame, "multiDropdown", default.multiDropdownHeight)
+		end
+		if default.multiDropdownSummaryHeight ~= nil then
+			setRowHeightOverride(frame, "multiDropdownSummary", default.multiDropdownSummaryHeight)
+		end
+		if default.colorHeight ~= nil then
+			setRowHeightOverride(frame, "color", default.colorHeight)
+		end
+		if default.checkboxColorHeight ~= nil then
+			setRowHeightOverride(frame, "checkboxColor", default.checkboxColorHeight)
+		end
+		if default.dropdownColorHeight ~= nil then
+			setRowHeightOverride(frame, "dropdownColor", default.dropdownColorHeight)
+		end
+		if default.dividerHeight ~= nil then
+			setRowHeightOverride(frame, "divider", default.dividerHeight)
+		end
+		if default.collapsibleHeight ~= nil then
+			setRowHeightOverride(frame, "collapsible", default.collapsibleHeight)
 		end
 	end
 

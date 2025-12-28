@@ -1,6 +1,9 @@
 # Changelog
 
-## [10] - 2025-12-25
+## [10] - 2025-12-28
+
+Added:
+- EditMode: Per-frame settings layout overrides for row spacing and row heights (slider, dropdown, divider, etc).
 
 Fixed:
 - EditMode: Settings refresh is now debounced and avoids redundant layout/enable/visibility updates to improve performance.
