@@ -202,9 +202,10 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	self:SetOptions(data.options or data.values or {})
 
 	-- Jetzt Basis-Init, das InitDropdown + EvaluateState ruft (unsere überschriebenen Versionen)
+	self._eqolSuppressSync = true -- avoid re-entrant RepairDisplay during init
 	SettingsDropdownControlMixin.Init(self, initializer)
 	self:EnsureDefaultCallbacks()
-
+	self._eqolSuppressSync = nil
 	-- Label ggf. anpassen
 	if data.label then self.Text:SetText(data.label) end
 
@@ -212,7 +213,6 @@ function LibEQOL_MultiDropdownMixin:Init(initializer)
 	if not self.hideSummary then
 		self:RefreshSummary()
 	end
-	self:SyncSetting()
 end
 
 -- OVERRIDE: Avoid regenerating the dropdown menu on value changes when using scroll mode.
@@ -339,6 +339,7 @@ function LibEQOL_MultiDropdownMixin:SetSelected(key, shouldSelect, option)
 end
 
 function LibEQOL_MultiDropdownMixin:SyncSetting(selection)
+	if self._eqolSuppressSync then return end
 	local setting = self:GetSetting()
 	if not setting then return end
 

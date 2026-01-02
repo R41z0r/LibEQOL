@@ -1,5 +1,10 @@
 # Changelog
 
+## [11] - 2026-01-02
+
+Fixed:
+- Settings: Multi Dropdown no longer duplicates when expanding parent sections (avoids re-entrant SyncSetting during init).
+
 ## [10] - 2025-12-28
 
 Added:
