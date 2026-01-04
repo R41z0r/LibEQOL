@@ -1137,6 +1137,10 @@ function lib.CreateExpandableSection(_, cat, data)
 	end
 
 	local resolvedName = nameGetter() or "Section"
+	local newTagID = data.newTagID
+	if newTagID ~= nil then
+		newTagID = prefixTag(newTagID, data.prefix)
+	end
 	local initializer
 	if type(CreateSettingsExpandableSectionInitializer) == "function" then
 		initializer = CreateSettingsExpandableSectionInitializer(resolvedName)
@@ -1161,6 +1165,31 @@ function lib.CreateExpandableSection(_, cat, data)
 	function initializer:InitFrame(frame)
 		self.data.name = self.data.nameGetter()
 		origInitFrame(self, frame)
+
+		if newTagID then
+			if not frame.NewFeature then
+				local parent = (frame.Button or frame)
+				frame.NewFeature = CreateFrame("Frame", nil, parent, "NewFeatureLabelTemplate")
+				frame.NewFeature:SetScale(0.8)
+				frame.NewFeature:SetFrameStrata("HIGH")
+				frame.NewFeature:SetFrameLevel((parent:GetFrameLevel() or 0) + 5)
+				frame.NewFeature:ClearAllPoints()
+				if frame.Button and frame.Button.Text then
+					frame.NewFeature:SetPoint("BOTTOMRIGHT", frame.Button.Text, "LEFT", 16, -10)
+				else
+					frame.NewFeature:SetPoint("LEFT", frame, "LEFT", 0, 0)
+				end
+			end
+			local resolver, resolvedPrefix = getResolverForPrefix(data.prefix or (State.prefixSet and State.prefix) or nil)
+			local show = false
+			if resolver then
+				local ok, result = pcall(resolver, newTagID, newTagID, nil, resolvedPrefix)
+				show = ok and result == true
+			end
+			frame.NewFeature:SetShown(show)
+		elseif frame.NewFeature then
+			frame.NewFeature:Hide()
+		end
 
 		local function applyVisuals(expanded)
 			if frame.Button and frame.Button.Right then
