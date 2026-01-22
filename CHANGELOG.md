@@ -1,5 +1,21 @@
 # Changelog
 
+## [13] - 2026-01-22
+
+Fixed:
+- EditMode: Settings row widths now clamp to available space when no scroll bar is visible (dropdowns, multi dropdowns, sliders).
+- EditMode: Slider value text stays within the row when input is hidden.
+- EditMode: Settings rows reserve scroll bar width even when it is hidden to keep alignment consistent.
+
+## [12] - 2026-01-22
+
+Added:
+- EditMode: Optional max height for settings lists with automatic scrolling (`settingsMaxHeight`/`maxSettingsHeight`, `SetFrameSettingsMaxHeight`).
+- Docs: Added guidance for settings list max height and the new setter.
+
+Fixed:
+- EditMode: Settings dialog layout tweaks for dropdown+color, multi dropdown, and slider input alignment.
+
 ## [11] - 2026-01-02
 
 Fixed:

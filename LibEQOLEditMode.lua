@@ -1449,6 +1449,26 @@ end
 local function buildDropdown()
 	local mixin = {}
 
+	function mixin:ApplyLayout()
+		if not (self.Label and self.Dropdown) then
+			return
+		end
+
+		local rowWidth = self:GetWidth() or 0
+		local labelWidth = self.Label:GetWidth() or 100
+		local leftGap = 5
+		local rightMargin = 2
+		local available = rowWidth - labelWidth - leftGap - rightMargin
+		if available < 1 then
+			return
+		end
+
+		self.Dropdown:SetWidth(available)
+		if self.OldDropdown then
+			self.OldDropdown:SetWidth(available)
+		end
+	end
+
 	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
@@ -1465,6 +1485,7 @@ local function buildDropdown()
 			self.Dropdown = self.Control.Dropdown
 		end
 
+		self:ApplyLayout()
 		if data.generator then
 			self.Dropdown:SetupMenu(function(owner, rootDescription)
 				if data.height then
@@ -1533,6 +1554,34 @@ end
 
 local function buildMultiDropdown()
 	local mixin = {}
+
+	function mixin:ApplyLayout()
+		if not (self.Label and self.Dropdown) then
+			return
+		end
+
+		local rowWidth = self:GetWidth() or 0
+		local labelWidth = self.Label:GetWidth() or 100
+		local leftGap = 5
+		local rightMargin = 2
+		local available = rowWidth - labelWidth - leftGap - rightMargin
+		if available < 1 then
+			return
+		end
+
+		self.Dropdown:SetWidth(available)
+		if self.OldDropdown then
+			self.OldDropdown:SetWidth(available)
+		end
+
+		if self.Summary then
+			self.Summary:ClearAllPoints()
+			self.Summary:SetPoint("TOPLEFT", self.Dropdown, "BOTTOMLEFT", 0, -2)
+			self.Summary:SetPoint("TOPRIGHT", self.Dropdown, "BOTTOMRIGHT", 0, -2)
+			self.Summary:SetWidth(available)
+			self.summaryAnchored = true
+		end
+	end
 
 	function mixin:Setup(data, selection)
 		self.setting = data
@@ -1612,6 +1661,7 @@ local function buildMultiDropdown()
 			end
 		end)
 
+		self:ApplyLayout()
 		self:RefreshSummary()
 
 		Util:ApplyTooltip(self, self.Dropdown, data.tooltip)
@@ -1806,18 +1856,6 @@ local function buildMultiDropdown()
 		oldDropdown:SetSize(200, 30)
 		oldDropdown:Hide()
 		frame.OldDropdown = oldDropdown
-
-		local button = CreateFrame("Button", nil, frame)
-		button:SetSize(36, 22)
-		button:SetPoint("LEFT", dropdown, "RIGHT", 6, 0)
-
-		do
-			local gap = 6
-			local base = dropdown:GetWidth() or 200
-			local ddW = math.max(80, base - (button:GetWidth() + gap))
-			dropdown:SetWidth(ddW)
-			oldDropdown:SetWidth(ddW)
-		end
 
 		local summary = frame:CreateFontString(nil, nil, "GameFontHighlightSmall")
 		summary:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -2)
@@ -2345,16 +2383,12 @@ local function buildSlider()
 		end
 		local input = self.Input
 		local inputShown = input and input:IsShown()
-		local inputWidth = inputShown and (input:GetWidth() or 0) or 0
-		local inputGap = inputShown and 6 or 0
+		local inputWidth = (input:GetWidth() or 0) or 0
+		local inputGap = 6
 
 		self.Slider:ClearAllPoints()
 		self.Slider:SetPoint("LEFT", self.Label, "RIGHT", 5, 0)
-		if inputShown then
 			self.Slider:SetPoint("RIGHT", self, "RIGHT", -(inputWidth + inputGap), 0)
-		else
-			self.Slider:SetPoint("RIGHT", self, "RIGHT", -2, 0)
-		end
 
 		if input then
 			input:ClearAllPoints()
@@ -2366,7 +2400,19 @@ local function buildSlider()
 				input:SetPoint("RIGHT", self.Slider, "RIGHT", -2, 0)
 			end
 		end
+
+		local rightText = self.Slider and self.Slider.RightText
+		if rightText then
+			rightText:ClearAllPoints()
+			if inputShown then
+				rightText:SetPoint("LEFT", self.Slider, "RIGHT", 25, 0)
+			else
+				rightText:SetPoint("RIGHT", self, "RIGHT", -2, 0)
+			end
+		end
 	end
+
+	mixin.ApplyLayout = mixin.ApplyInputLayout
 
 	function mixin:Setup(data, selection)
 		self.setting = data
@@ -2474,7 +2520,7 @@ local function buildSlider()
 
 		local input = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
 		input:SetAutoFocus(false)
-		input:SetSize(38, 20)
+		input:SetSize(34, 20)
 		input:SetJustifyH("CENTER")
 		input:SetPoint("RIGHT", frame, "RIGHT", -2, 0)
 		input:Hide()
