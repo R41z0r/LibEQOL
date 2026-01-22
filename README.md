@@ -97,6 +97,7 @@ end)
 - Selection overlay and move handles that integrate with Blizzard Edit Mode selection/highlight.
 - Keyboard nudging (arrow keys, Shift for larger steps) and reset-to-default positioning.
 - Auto-built settings dialog with pooled widgets (checkbox, dropdown, multi dropdown, slider, color picker, checkbox+color, dropdown+color) and a built-in reset action.
+- Optional max height for per-frame settings lists with automatic scrolling.
 - Per-frame action buttons plus automatic "Reset Position" button (can be hidden).
 - Callbacks for entering/exiting Edit Mode and when the active layout changes.
 - Helpers to refresh setting enable states when your backing data changes.
@@ -109,11 +110,12 @@ end)
 - `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler) using the built-in Edit Mode extra button style.
 - `SetFrameResetVisible(frame, showReset)` – hide or re-show the built-in "Reset Position" button.
 - `SetFrameSettingsResetVisible(frame, showReset)` – hide or re-show the settings "Reset to Default" button for that frame.
+- `SetFrameSettingsMaxHeight(frame, height)` – set a max height (in pixels) for the settings list; pass `nil` to clear the override.
 - `SetFrameDragEnabled(frame, enabledOrPredicate)` – allow/deny drag + keyboard nudging for a frame; pass a boolean or function `(layoutName, layoutIndex)`; `nil` removes the override. You can also set `defaultPosition.allowDrag`/`dragEnabled` on `AddFrame`.
 - `SetFrameOverlayToggleEnabled(frame, enabled)` – show/hide the eye-button for that frame; default is disabled until you opt-in.
 - `SetFrameCollapseExclusive(frame, enabled)` – make collapsible headers on this frame exclusive (expanding one collapses the others). You can also set `defaultPosition.collapseExclusive` (alias `exclusiveCollapse`) on `AddFrame`.
 - Default visibility flags on `AddFrame`: `default.showReset = false` hides the Reset Position button; `default.showSettingsReset = false` hides the Settings Reset button for that frame.
-- Settings layout overrides on `AddFrame`: `default.settingsSpacing`, `default.sliderHeight`, `default.dropdownHeight`, `default.multiDropdownHeight`, `default.multiDropdownSummaryHeight`, `default.checkboxHeight`, `default.colorHeight`, `default.checkboxColorHeight`, `default.dropdownColorHeight`, `default.dividerHeight`, `default.collapsibleHeight`.
+- Settings layout overrides on `AddFrame`: `default.settingsSpacing`, `default.settingsMaxHeight` (or `default.maxSettingsHeight`), `default.sliderHeight`, `default.dropdownHeight`, `default.multiDropdownHeight`, `default.multiDropdownSummaryHeight`, `default.checkboxHeight`, `default.colorHeight`, `default.checkboxColorHeight`, `default.dropdownColorHeight`, `default.dividerHeight`, `default.collapsibleHeight`.
 - `RegisterCallback(event, callback)` – `event` is `"enter"`, `"exit"`, `"layout"`, `"layoutadded"`, `"layoutdeleted"`, `"layoutrenamed"`, `"layoutduplicate"`, or `"spec"`; `layout` callbacks receive `(layoutName, layoutIndex)`; `layoutadded` receives `(addedLayoutIndex, activateNewLayout, isLayoutImported, layoutType, layoutName)`; `layoutdeleted` receives `(deletedLayoutIndex, deletedLayoutName)` using the cached name from before the refresh; `layoutrenamed` receives `(oldName, newName, layoutIndex)` where `layoutIndex` is the UI index (custom layouts are offset by +2); `layoutduplicate` receives `(addedLayoutIndex, duplicateIndices, isLayoutImported, layoutType, layoutName)` (name is the new layout once, not per duplicate); `spec` receives the current spec index (from `GetSpecialization()`).
 - `GetActiveLayoutName()` / `GetActiveLayoutIndex()` / `IsInEditMode()` – query current state.
 - `GetLayouts()` – returns an array of `{ index, name, layoutType, isActive }` for UI indices (1/2 use `LAYOUT_STYLE_MODERN` / `LAYOUT_STYLE_CLASSIC` and `Enum.EditModeLayoutType.Modern` / `Enum.EditModeLayoutType.Classic` when available); `isActive` is `1` for the active layout, else `0`.
