@@ -3938,19 +3938,21 @@ function Internal:RefreshSettings()
 	local layoutIndex = lib:GetActiveLayoutIndex()
 	local layoutDirty = false
 	for _, child in ipairs({ parent:GetChildren() }) do
-		if child.SetEnabled and child.setting then
+		if child.setting then
 			local data = child.setting
-			local enabled = true
-			if data.isEnabled then
-				local ok, result = pcall(data.isEnabled, layoutName, layoutIndex)
-				enabled = ok and result ~= false
-			elseif data.disabled then
-				local ok, result = pcall(data.disabled, layoutName, layoutIndex)
-				enabled = not (ok and result == true)
-			end
-			if child._eqolEnabled ~= enabled then
-				child._eqolEnabled = enabled
-				child:SetEnabled(enabled)
+			if child.SetEnabled then
+				local enabled = true
+				if data.isEnabled then
+					local ok, result = pcall(data.isEnabled, layoutName, layoutIndex)
+					enabled = ok and result ~= false
+				elseif data.disabled then
+					local ok, result = pcall(data.disabled, layoutName, layoutIndex)
+					enabled = not (ok and result == true)
+				end
+				if child._eqolEnabled ~= enabled then
+					child._eqolEnabled = enabled
+					child:SetEnabled(enabled)
+				end
 			end
 
 			local collapsedParent = (data.kind ~= lib.SettingType.Collapsible) and data.parentId and Collapse:Get(selectionParent, data.parentId)

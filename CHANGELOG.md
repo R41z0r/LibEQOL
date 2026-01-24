@@ -1,5 +1,10 @@
 # Changelog
 
+## [14] - 2026-01-24
+
+Fixed:
+- EditMode: Dividers now appear correctly on first expand; refresh applies to rows without `SetEnabled`.
+
 ## [13] - 2026-01-22
 
 Fixed:

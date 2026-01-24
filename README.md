@@ -110,7 +110,7 @@ end)
 - `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler) using the built-in Edit Mode extra button style.
 - `SetFrameResetVisible(frame, showReset)` – hide or re-show the built-in "Reset Position" button.
 - `SetFrameSettingsResetVisible(frame, showReset)` – hide or re-show the settings "Reset to Default" button for that frame.
-- `SetFrameSettingsMaxHeight(frame, height)` – set a max height (in pixels) for the settings list; pass `nil` to clear the override.
+- `SetFrameSettingsMaxHeight(frame, height)` – set a max height (in pixels) for the settings list only (button bar excluded); pass `nil` to clear the override.
 - `SetFrameDragEnabled(frame, enabledOrPredicate)` – allow/deny drag + keyboard nudging for a frame; pass a boolean or function `(layoutName, layoutIndex)`; `nil` removes the override. You can also set `defaultPosition.allowDrag`/`dragEnabled` on `AddFrame`.
 - `SetFrameOverlayToggleEnabled(frame, enabled)` – show/hide the eye-button for that frame; default is disabled until you opt-in.
 - `SetFrameCollapseExclusive(frame, enabled)` – make collapsible headers on this frame exclusive (expanding one collapses the others). You can also set `defaultPosition.collapseExclusive` (alias `exclusiveCollapse`) on `AddFrame`.
