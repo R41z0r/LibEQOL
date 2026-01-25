@@ -2299,18 +2299,20 @@ local function buildDropdownColor()
 		local dropdown = control.Dropdown
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		dropdown:SetHeight(30)
+		dropdown:SetWidth(175)
 		frame.Dropdown = dropdown
 
 		-- old style control (hidden by default)
 		local oldDropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
 		oldDropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		oldDropdown:SetHeight(30)
+		oldDropdown:SetWidth(175)
 		oldDropdown:Hide()
 		frame.OldDropdown = oldDropdown
 
 		local button = CreateFrame("Button", nil, frame)
 		button:SetSize(COLOR_BUTTON_WIDTH, 22)
-		button:SetPoint("RIGHT", frame, "RIGHT", -2, 0)
+		button:SetPoint("LEFT", frame.Dropdown, "RIGHT", 2, 0)
 
 		local border = button:CreateTexture(nil, "BACKGROUND")
 		border:SetColorTexture(0.7, 0.7, 0.7, 1)
@@ -2824,6 +2826,7 @@ function Dialog:UpdateSettings()
 						enabled = not (ok and result == true)
 					end
 					setting:SetEnabled(enabled)
+					setting._eqolEnabled = enabled
 				end
 				if visible then
 					setting.ignoreInLayout = nil
@@ -3980,6 +3983,7 @@ function Internal:RefreshSettingValues(targetSettings)
 					enabled = not (ok and result == true)
 				end
 				child:SetEnabled(enabled)
+				child._eqolEnabled = enabled
 			end
 			local collapsed = (data.kind ~= lib.SettingType.Collapsible)
 				and Collapse:Get(selectionParent, data.parentId)

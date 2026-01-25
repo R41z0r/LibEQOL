@@ -29,15 +29,7 @@ Use the published action in this repo to pull the latest LibEQOL release ZIP dur
     destination: EnhanceQoL/libs   # results in EnhanceQoL/libs/LibEQOL
 ```
 
-Optional inputs: `modules` (v2+: `editmode`, `settings`, or `all`, defaults to all), `repo` (defaults to this repo), and `github-token` (defaults to `github.token`). Outputs: `tag` and `asset_url` from the resolved release. Example for the v2 action filtering to EditMode only:
-
-```
-- name: Install LibEQOL (EditMode only)
-  uses: R41z0r/LibEQOL@v2
-  with:
-    destination: EnhanceQoL/libs
-    modules: editmode
-```
+Optional inputs: `repo` (defaults to this repo) and `github-token` (defaults to `github.token`). Outputs: `tag` and `asset_url` from the resolved release.
 
 ## Architecture
 
