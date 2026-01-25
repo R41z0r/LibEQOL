@@ -51,6 +51,11 @@ local State = {
 	widgetPools = lib.widgetPools or {},
 	overlayToggleFlags = lib.overlayToggleFlags or {},
 	dragPredicates = lib.dragPredicates or {},
+	managerToggleSpecs = lib.managerToggleSpecs or {},
+	managerToggleState = lib.managerToggleState or {},
+	managerToggleOrder = lib.managerToggleOrder or {},
+	managerCategorySpecs = lib.managerCategorySpecs or {},
+	managerCategoryOrder = lib.managerCategoryOrder or {},
 	layoutSnapshot = Internal.layoutNameSnapshot,
 	pendingDeletedLayouts = lib.pendingDeletedLayouts or {},
 }
@@ -71,12 +76,35 @@ lib.rowHeightOverrides = State.rowHeightOverrides
 lib.widgetPools = State.widgetPools
 lib.overlayToggleFlags = State.overlayToggleFlags
 lib.dragPredicates = State.dragPredicates
+lib.managerToggleSpecs = State.managerToggleSpecs
+lib.managerToggleState = State.managerToggleState
+lib.managerToggleOrder = State.managerToggleOrder
+lib.managerCategorySpecs = State.managerCategorySpecs
+lib.managerCategoryOrder = State.managerCategoryOrder
 lib.pendingDeletedLayouts = State.pendingDeletedLayouts
 
 local DEFAULT_SETTINGS_SPACING = 2
 local DEFAULT_SLIDER_HEIGHT = 32
 local COLOR_BUTTON_WIDTH = 22
 local DROPDOWN_COLOR_MAX_WIDTH = 200
+local DEFAULT_MANAGER_TOGGLE_MAX_HEIGHT = 220
+local DEFAULT_MANAGER_TOGGLE_ROW_HEIGHT = 32
+local MANAGER_TOGGLE_PANEL_PADDING = 12
+local MANAGER_TOGGLE_CATEGORY_SPACING = 8
+local MANAGER_TOGGLE_SECTION_SPACING = 4
+local MANAGER_TOGGLE_COLUMN_SPACING = 12
+local DEFAULT_MANAGER_TOGGLE_CATEGORY_ID = "_default"
+local DEFAULT_MANAGER_TOGGLE_CATEGORY_LABEL = "Other"
+
+local function normalizeManagerCategoryId(id, label)
+	if id and id ~= "" then
+		return id
+	end
+	if label and label ~= "" then
+		return label
+	end
+	return DEFAULT_MANAGER_TOGGLE_CATEGORY_ID
+end
 
 local function normalizeSpacing(value, fallback)
 	local numberValue = tonumber(value)
@@ -180,9 +208,7 @@ local function FixScrollBarInside(scroll)
 	end
 end
 
-local function UpdateScrollChildWidth(dialog)
-	local scroll = dialog and dialog.SettingsScroll
-	local child = dialog and dialog.Settings
+local function UpdateScrollChildWidthFor(scroll, child)
 	if not (scroll and child) then
 		return
 	end
@@ -214,6 +240,15 @@ local function UpdateScrollChildWidth(dialog)
 			end
 		end
 	end
+end
+
+local function UpdateScrollChildWidth(dialog)
+	local scroll = dialog and dialog.SettingsScroll
+	local child = dialog and dialog.Settings
+	if not (scroll and child) then
+		return
+	end
+	UpdateScrollChildWidthFor(scroll, child)
 end
 
 -- Blizzard frames we also toggle via the manager eye (if they exist)
@@ -280,6 +315,7 @@ Internal.managerExtraFrames = Internal.managerExtraFrames
 		"ExternalDefensivesFrame",
 	}
 Internal.managerHiddenFrames = Internal.managerHiddenFrames or {}
+Internal.managerToggleMaxHeight = Internal.managerToggleMaxHeight or DEFAULT_MANAGER_TOGGLE_MAX_HEIGHT
 Internal.managerEyeLocales = Internal.managerEyeLocales
 	or {
 		enUS = {
@@ -1163,6 +1199,551 @@ local function ensureManagerEyeButton()
 	button:SetScript("OnLeave", GameTooltip_Hide)
 	Internal.managerEyeButton = button
 	updateManagerEyeButton()
+end
+
+-- Manager toggle panel -----------------------------------------------------------
+local function ensureManagerCategory(id, label, sort)
+	if not label or label == "" then
+		label = id
+	end
+	if not label or label == "" then
+		label = DEFAULT_MANAGER_TOGGLE_CATEGORY_LABEL
+	end
+	id = normalizeManagerCategoryId(id, label)
+	local spec = State.managerCategorySpecs[id]
+	if not spec then
+		spec = {
+			id = id,
+			label = label,
+		}
+		State.managerCategorySpecs[id] = spec
+		table.insert(State.managerCategoryOrder, id)
+	end
+	spec.label = label
+	if sort ~= nil then
+		spec.sort = sort
+	end
+	return id, spec
+end
+
+local function getManagerCategoryById(id)
+	if id and id ~= "" then
+		local spec = State.managerCategorySpecs[id]
+		if spec then
+			return id, spec
+		end
+	end
+	return nil
+end
+
+local function resolveManagerToggleCategory(data)
+	if not data then
+		return ensureManagerCategory(DEFAULT_MANAGER_TOGGLE_CATEGORY_ID, DEFAULT_MANAGER_TOGGLE_CATEGORY_LABEL)
+	end
+	local category = data.category or data.categoryId or data.categoryName
+	if type(category) == "table" then
+		local label = category.label or category.name or category.id
+		local id = category.id or category.name or category.label
+		local sort = category.sort
+		if id and (not label or label == "") then
+			local existingId, existingSpec = getManagerCategoryById(id)
+			if existingSpec then
+				return existingId, existingSpec
+			end
+		end
+		return ensureManagerCategory(id, label, sort)
+	end
+	if type(category) == "string" then
+		local existingId, existingSpec = getManagerCategoryById(category)
+		if existingSpec then
+			return existingId, existingSpec
+		end
+		return ensureManagerCategory(nil, category)
+	end
+	return ensureManagerCategory(DEFAULT_MANAGER_TOGGLE_CATEGORY_ID, DEFAULT_MANAGER_TOGGLE_CATEGORY_LABEL)
+end
+
+local function getManagerToggleSort(categorySpec)
+	if not categorySpec then
+		return nil
+	end
+	local sort = categorySpec.sort
+	if type(sort) == "string" then
+		local key = sort:lower()
+		if key == "label" then
+			return function(a, b)
+				local al = (a.label or ""):lower()
+				local bl = (b.label or ""):lower()
+				if al == bl then
+					return (a.order or 0) < (b.order or 0)
+				end
+				return al < bl
+			end
+		end
+	elseif type(sort) == "function" then
+		return function(a, b)
+			local ok, result = pcall(sort, a, b)
+			if ok and result ~= nil then
+				return result and true or false
+			end
+			return (a.order or 0) < (b.order or 0)
+		end
+	end
+	return nil
+end
+
+local function resolveManagerToggleFrames(data)
+	if not data then
+		return nil
+	end
+	local frames = data.frames or data.frame
+	if type(frames) == "function" then
+		local ok, result = pcall(frames)
+		if ok then
+			frames = result
+		else
+			frames = nil
+		end
+	end
+	if frames == nil then
+		return nil
+	end
+	if type(frames) == "string" or (type(frames) == "table" and (frames.GetObjectType or frames.IsObjectType)) then
+		frames = { frames }
+	end
+	if type(frames) ~= "table" then
+		return nil
+	end
+
+	local resolved = {}
+	for _, entry in ipairs(frames) do
+		local frame = resolveFrame(entry)
+		if frame then
+			resolved[#resolved + 1] = frame
+		end
+	end
+	if #resolved == 0 then
+		for _, entry in pairs(frames) do
+			local frame = resolveFrame(entry)
+			if frame then
+				resolved[#resolved + 1] = frame
+			end
+		end
+	end
+	if #resolved == 0 then
+		return nil
+	end
+	return resolved
+end
+
+local function getManagerToggleValue(data)
+	if not data then
+		return true
+	end
+	if data.get then
+		local ok, value = pcall(data.get, lib.activeLayoutName, lib:GetActiveLayoutIndex())
+		if ok and value ~= nil then
+			return not not value
+		end
+	end
+	local stored = State.managerToggleState[data.id]
+	if stored ~= nil then
+		return stored
+	end
+	local frames = resolveManagerToggleFrames(data)
+	if frames and frames[1] and frames[1].IsShown then
+		return frames[1]:IsShown() and true or false
+	end
+	if data.default ~= nil then
+		return not not data.default
+	end
+	return true
+end
+
+local function applyManagerToggleValue(data, value)
+	if not data then
+		return false
+	end
+	if isInCombat() and not data.allowInCombat then
+		return false
+	end
+	local layoutName = lib.activeLayoutName
+	local layoutIndex = lib:GetActiveLayoutIndex()
+	if data.set then
+		local ok, result = pcall(data.set, layoutName, value, layoutIndex)
+		if not ok or result == false then
+			return false
+		end
+	else
+		local frames = resolveManagerToggleFrames(data)
+		if frames then
+			for _, frame in ipairs(frames) do
+				if frame then
+					if frame.SetShown then
+						frame:SetShown(value)
+					elseif value and frame.Show then
+						frame:Show()
+					elseif (not value) and frame.Hide then
+						frame:Hide()
+					end
+				end
+			end
+		end
+	end
+	State.managerToggleState[data.id] = not not value
+	return true
+end
+
+local function createManagerToggleButton(parent)
+	local button = CreateFrame("Frame", nil, parent, "EditModeManagerSettingCheckButtonTemplate")
+	button.fixedHeight = DEFAULT_MANAGER_TOGGLE_ROW_HEIGHT
+	button:SetHeight(DEFAULT_MANAGER_TOGGLE_ROW_HEIGHT)
+	function button:ApplyLayout()
+		if self.EditModeManagerSettingCheckButton_OnLoad then
+			self:EditModeManagerSettingCheckButton_OnLoad()
+			return
+		end
+		local width = self:GetWidth() or 0
+		if width < 1 or not self.Label then
+			return
+		end
+		local offset = select(4, self.Label:GetPoint(1)) or 0
+		local labelWidth = width - (self.Button:GetWidth() or 0) - offset
+		if labelWidth < 1 then
+			labelWidth = 1
+		end
+		self.Label:SetWidth(labelWidth)
+	end
+	function button:OnCheckButtonClick()
+		if not self.data then
+			return
+		end
+		local value = self.Button:GetChecked() and true or false
+		if not applyManagerToggleValue(self.data, value) then
+			self.Button:SetChecked(getManagerToggleValue(self.data))
+			return
+		end
+		if Internal.RefreshManagerTogglePanel then
+			Internal:RefreshManagerTogglePanel()
+		end
+	end
+	function button:ShouldEnable()
+		if not self.data then
+			return true
+		end
+		if isInCombat() and not self.data.allowInCombat then
+			return false
+		end
+		local layoutName = lib.activeLayoutName
+		local layoutIndex = lib:GetActiveLayoutIndex()
+		if self.data.isEnabled then
+			local ok, result = pcall(self.data.isEnabled, layoutName, layoutIndex)
+			if ok then
+				return result ~= false
+			end
+		elseif self.data.disabled then
+			local ok, result = pcall(self.data.disabled, layoutName, layoutIndex)
+			if ok then
+				return result ~= true
+			end
+		end
+		return true
+	end
+	return button
+end
+
+local function ensureManagerTogglePanel()
+	if Internal.managerTogglePanel or not EditModeManagerFrame then
+		return Internal.managerTogglePanel
+	end
+
+	local panel = CreateFrame("Frame", nil, EditModeManagerFrame)
+	panel.ignoreInLayout = true
+	panel:SetPoint("TOPLEFT", EditModeManagerFrame, "BOTTOMLEFT", 0, -6)
+	panel:SetPoint("TOPRIGHT", EditModeManagerFrame, "BOTTOMRIGHT", 0, -6)
+	panel:SetHeight(1)
+	panel:SetFrameStrata(EditModeManagerFrame:GetFrameStrata())
+	panel:SetFrameLevel(EditModeManagerFrame:GetFrameLevel())
+	panel:Hide()
+
+	local border = CreateFrame("Frame", nil, panel, "DialogBorderTranslucentTemplate")
+	border.ignoreInLayout = true
+
+	local scroll = CreateFrame("ScrollFrame", nil, panel, "ScrollFrameTemplate")
+	scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", MANAGER_TOGGLE_PANEL_PADDING, -MANAGER_TOGGLE_PANEL_PADDING)
+	scroll:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -(MANAGER_TOGGLE_PANEL_PADDING + 6), -MANAGER_TOGGLE_PANEL_PADDING)
+	scroll:SetHeight(1)
+	scroll:EnableMouseWheel(true)
+	if scroll.ScrollBar and scroll.ScrollBar.SetHideIfUnscrollable then
+		scroll.ScrollBar:SetHideIfUnscrollable(true)
+	end
+
+	local list = CreateFrame("Frame", nil, scroll, "VerticalLayoutFrame")
+	list:SetWidth(1)
+	list.spacing = MANAGER_TOGGLE_CATEGORY_SPACING
+	scroll:SetScrollChild(list)
+
+	panel.Scroll = scroll
+	panel.List = list
+	panel.padding = MANAGER_TOGGLE_PANEL_PADDING
+	panel.maxHeight = Internal.managerToggleMaxHeight or DEFAULT_MANAGER_TOGGLE_MAX_HEIGHT
+
+	function panel:ApplyScrollLimit()
+		if list.Layout then
+			list:Layout()
+		end
+
+		local contentHeight = list:GetHeight() or 1
+		local targetHeight = contentHeight
+		local needsScroll = false
+		local maxHeight = self.maxHeight
+		if maxHeight and contentHeight > maxHeight then
+			targetHeight = maxHeight
+			needsScroll = true
+		end
+		if targetHeight < 1 then
+			targetHeight = 1
+		end
+
+		if scroll._eqolLastHeight ~= targetHeight then
+			scroll._eqolLastHeight = targetHeight
+			scroll:SetHeight(targetHeight)
+			scroll.fixedHeight = targetHeight
+		end
+
+		local panelHeight = targetHeight + (self.padding * 2)
+		if panel._eqolLastHeight ~= panelHeight then
+			panel._eqolLastHeight = panelHeight
+			panel:SetHeight(panelHeight)
+		end
+
+		if scroll.ScrollBar and scroll.ScrollBar.SetShown then
+			scroll.ScrollBar:SetShown(needsScroll)
+		end
+
+		if scroll.UpdateScrollChildRect then
+			scroll:UpdateScrollChildRect()
+		end
+
+		UpdateScrollChildWidthFor(scroll, list)
+		if Internal.UpdateManagerToggleLayout then
+			Internal:UpdateManagerToggleLayout()
+		end
+
+		if not needsScroll then
+			scroll:SetVerticalScroll(0)
+		else
+			local maxScroll = scroll:GetVerticalScrollRange()
+			scroll:SetVerticalScroll(math.min(scroll:GetVerticalScroll(), maxScroll))
+		end
+	end
+
+	Internal.managerTogglePanel = panel
+	return panel
+end
+
+local function createManagerToggleCategoryBlock(parent)
+	local block = CreateFrame("Frame", nil, parent, "VerticalLayoutFrame")
+	block.spacing = MANAGER_TOGGLE_SECTION_SPACING
+
+	local title = CreateFrame("Frame", nil, block)
+	title:SetHeight(24)
+	title.layoutIndex = 1
+	title.Text = title:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+	title.Text:SetPoint("LEFT", 4, 0)
+	title.Text:SetPoint("RIGHT", -4, 0)
+	title.Text:SetJustifyH("LEFT")
+	block.Title = title
+
+	local container = CreateFrame("Frame", nil, block, "GridLayoutFrame")
+	container.layoutIndex = 2
+	container.childXPadding = MANAGER_TOGGLE_COLUMN_SPACING
+	container.childYPadding = DEFAULT_SETTINGS_SPACING
+	container.isHorizontal = true
+	container.stride = 2
+	container.layoutFramesGoingRight = true
+	container.layoutFramesGoingUp = false
+	container.alwaysUpdateLayout = true
+	block.Container = container
+
+	return block
+end
+
+function Internal:UpdateManagerToggleLayout()
+	local panel = self.managerTogglePanel
+	if not panel then
+		return
+	end
+	local list = panel.List
+	local width = list and list._eqolLastWidth or nil
+	if not width or width < 1 then
+		return
+	end
+	local columnWidth = math.floor((width - MANAGER_TOGGLE_COLUMN_SPACING) / 2)
+	if columnWidth < 1 then
+		columnWidth = width
+	end
+	local blocks = self.managerToggleCategoryBlocks
+	if not blocks then
+		return
+	end
+	for _, block in pairs(blocks) do
+		if block:IsShown() then
+			block:SetWidth(width)
+			if block.Title then
+				block.Title:SetWidth(width)
+			end
+			local container = block.Container
+			if container then
+				container:SetWidth(width)
+				container.childXPadding = MANAGER_TOGGLE_COLUMN_SPACING
+				for _, row in ipairs({ container:GetChildren() }) do
+					if row and row.SetWidth then
+						row.fixedWidth = columnWidth
+						row:SetWidth(columnWidth)
+						if row.ApplyLayout then
+							row:ApplyLayout()
+						end
+					end
+				end
+				if container.Layout then
+					container:Layout()
+				end
+			end
+			if block.Layout then
+				block:Layout()
+			end
+		end
+	end
+end
+
+function Internal:RefreshManagerTogglePanel()
+	local panel = ensureManagerTogglePanel()
+	if not panel then
+		return
+	end
+
+	local list = panel.List
+	local buttons = Internal.managerToggleButtons or {}
+	local blocks = Internal.managerToggleCategoryBlocks or {}
+	Internal.managerToggleButtons = buttons
+	Internal.managerToggleCategoryBlocks = blocks
+
+	local categories = {}
+	local orderIndex = 0
+	for _, id in ipairs(State.managerToggleOrder) do
+		local data = State.managerToggleSpecs[id]
+		if data then
+			orderIndex = orderIndex + 1
+			local categoryId, categorySpec = resolveManagerToggleCategory(data)
+			local entryList = categories[categoryId]
+			if not entryList then
+				entryList = { id = categoryId, spec = categorySpec, entries = {} }
+				categories[categoryId] = entryList
+			end
+			local label = data.label or data.name or data.id or id
+			entryList.entries[#entryList.entries + 1] = {
+				id = id,
+				data = data,
+				label = label,
+				order = orderIndex,
+			}
+		end
+	end
+
+	local orderedCategories = {}
+	local queued = {}
+	for _, categoryId in ipairs(State.managerCategoryOrder) do
+		local entryList = categories[categoryId]
+		if entryList and #entryList.entries > 0 then
+			orderedCategories[#orderedCategories + 1] = entryList
+			queued[categoryId] = true
+		end
+	end
+	for categoryId, entryList in pairs(categories) do
+		if not queued[categoryId] and #entryList.entries > 0 then
+			orderedCategories[#orderedCategories + 1] = entryList
+		end
+	end
+
+	local usedButtons = {}
+	local usedBlocks = {}
+	local blockIndex = 0
+	for _, category in ipairs(orderedCategories) do
+		blockIndex = blockIndex + 1
+		local block = blocks[category.id]
+		if not block then
+			block = createManagerToggleCategoryBlock(list)
+			blocks[category.id] = block
+		end
+		block.layoutIndex = blockIndex
+		block.ignoreInLayout = nil
+		block:Show()
+
+		local title = block.Title
+		if title and title.Text then
+			title.Text:SetText(category.spec and category.spec.label or category.id)
+		end
+
+		local container = block.Container
+		if container then
+			local sorter = getManagerToggleSort(category.spec)
+			if sorter then
+				table.sort(category.entries, sorter)
+			end
+			local rowIndex = 0
+			for _, entry in ipairs(category.entries) do
+				rowIndex = rowIndex + 1
+				local row = buttons[entry.id]
+				if not row then
+					row = createManagerToggleButton(container)
+					buttons[entry.id] = row
+				elseif row:GetParent() ~= container then
+					row:SetParent(container)
+				end
+				row.data = entry.data
+				row.layoutIndex = rowIndex
+				row.ignoreInLayout = nil
+				row.Label:SetText(entry.label)
+				row.Button:SetChecked(getManagerToggleValue(entry.data))
+				row:Show()
+				if row.EditModeCheckButton_OnShow then
+					row:EditModeCheckButton_OnShow()
+				end
+				usedButtons[entry.id] = true
+			end
+			if container.Layout then
+				container:Layout()
+			end
+		end
+		if block.Layout then
+			block:Layout()
+		end
+		usedBlocks[category.id] = true
+	end
+
+	for id, row in pairs(buttons) do
+		if not usedButtons[id] then
+			row:Hide()
+			row.ignoreInLayout = true
+			row.layoutIndex = nil
+			row.data = nil
+		end
+	end
+
+	for id, block in pairs(blocks) do
+		if not usedBlocks[id] then
+			block:Hide()
+			block.ignoreInLayout = true
+			block.layoutIndex = nil
+		end
+	end
+
+	if list.Layout then
+		list:Layout()
+	end
+	panel:ApplyScrollLimit()
+	panel:SetShown(blockIndex > 0)
 end
 
 local function snapshotLayoutNames(layoutInfo)
@@ -3474,6 +4055,7 @@ local function onEditModeEnter()
 	restoreManagerExtraFrames(true)
 	lib.isEditing = true
 	resetSelectionIndicators()
+	Internal:RefreshManagerTogglePanel()
 	for _, callback in next, lib.eventHandlersEnter do
 		securecallfunction(callback)
 	end
@@ -3648,6 +4230,9 @@ function lib:AddFrame(frame, callback, default)
 			elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
 				Layout:HandleSpecChanged()
 			end
+			if lib.isEditing then
+				Internal:RefreshManagerTogglePanel()
+			end
 		end)
 
 		EventRegistry:RegisterFrameEventAndCallback("EDIT_MODE_LAYOUTS_UPDATED", function(_, layoutInfo)
@@ -3698,6 +4283,68 @@ function lib:AddFrameSettingsButton(frame, data)
 		State.buttonSpecs[frame] = {}
 	end
 	table.insert(State.buttonSpecs[frame], data)
+end
+
+function lib:AddManagerToggle(data)
+	assert(type(data) == "table", "data must be a table")
+	local id = data.id or data.name or data.label
+	assert(type(id) == "string" and id ~= "", "manager toggle requires id or label")
+	data.id = id
+	resolveManagerToggleCategory(data)
+	if not State.managerToggleSpecs[id] then
+		table.insert(State.managerToggleOrder, id)
+	end
+	State.managerToggleSpecs[id] = data
+
+	if State.managerToggleState[id] == nil and data.default ~= nil then
+		State.managerToggleState[id] = not not data.default
+		if data.applyDefault ~= false then
+			applyManagerToggleValue(data, State.managerToggleState[id])
+		end
+	end
+
+	Internal:RefreshManagerTogglePanel()
+end
+
+function lib:AddManagerCheckbox(data)
+	return lib:AddManagerToggle(data)
+end
+
+function lib:AddManagerCategory(data)
+	assert(type(data) == "table", "data must be a table")
+	local label = data.label or data.name
+	assert(type(label) == "string" and label ~= "", "category requires label")
+	local id = data.id or label
+	ensureManagerCategory(id, label, data.sort)
+	Internal:RefreshManagerTogglePanel()
+end
+
+function lib:RemoveManagerToggle(id)
+	if not id then
+		return
+	end
+	State.managerToggleSpecs[id] = nil
+	State.managerToggleState[id] = nil
+	for index, entry in ipairs(State.managerToggleOrder) do
+		if entry == id then
+			table.remove(State.managerToggleOrder, index)
+			break
+		end
+	end
+	Internal:RefreshManagerTogglePanel()
+end
+
+function lib:RefreshManagerToggles()
+	Internal:RefreshManagerTogglePanel()
+end
+
+function lib:SetManagerTogglePanelMaxHeight(height)
+	Internal.managerToggleMaxHeight = normalizePositive(height, DEFAULT_MANAGER_TOGGLE_MAX_HEIGHT)
+	local panel = Internal.managerTogglePanel
+	if panel then
+		panel.maxHeight = Internal.managerToggleMaxHeight
+		panel:ApplyScrollLimit()
+	end
 end
 
 function lib:SetFrameResetVisible(frame, showReset)
