@@ -169,9 +169,15 @@ local function FixScrollBarInside(scroll)
 	end
 	scroll._eqolScrollBarFixed = true
 
+	local keepW = sb:GetWidth()
+
 	sb:ClearAllPoints()
 	sb:SetPoint("TOPRIGHT", scroll, "TOPRIGHT", -2, -16)
 	sb:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", -2, 16)
+
+	if (sb:GetWidth() or 0) < 1 then
+		sb:SetWidth((keepW and keepW > 0) and keepW or 16)
+	end
 end
 
 local function UpdateScrollChildWidth(dialog)
@@ -182,13 +188,20 @@ local function UpdateScrollChildWidth(dialog)
 	end
 
 	local sb = scroll.ScrollBar
-	local sbW = (sb and sb:IsShown() and sb:GetWidth()) or 0
-	local paddingRight = 6
+	local sbW = 0
+	if sb and sb:IsShown() then
+		sbW = sb:GetWidth() or 0
+		if sbW < 1 then
+			sbW = 16
+		end
+	end
 
+	local paddingRight = 6
 	local w = (scroll:GetWidth() or 0) - sbW - paddingRight
 	if w < 1 then
 		return
 	end
+
 	if child._eqolLastWidth ~= w then
 		child._eqolLastWidth = w
 		child:SetWidth(w)
@@ -330,7 +343,11 @@ Internal.managerEyeLocales = Internal.managerEyeLocales
 			body = "切換所有編輯模式視窗（包含暴雪框體）。",
 		},
 	}
-setmetatable(Internal.managerEyeLocales, { __index = function(t) return t.enUS end })
+setmetatable(Internal.managerEyeLocales, {
+	__index = function(t)
+		return t.enUS
+	end,
+})
 
 -- frequently used globals ----------------------------------------------------------
 local CreateFrame = _G.CreateFrame
@@ -565,8 +582,12 @@ local function evaluateVisibility(data, layoutName, layoutIndex)
 	if not data then
 		return true
 	end
-	if layoutName == nil then layoutName = lib.activeLayoutName end
-	if layoutIndex == nil then layoutIndex = lib:GetActiveLayoutIndex() end
+	if layoutName == nil then
+		layoutName = lib.activeLayoutName
+	end
+	if layoutIndex == nil then
+		layoutIndex = lib:GetActiveLayoutIndex()
+	end
 	if data.isShown then
 		local ok, result = pcall(data.isShown, layoutName, layoutIndex)
 		if ok and result == false then
@@ -723,7 +744,9 @@ local function ensureMagnetismAPI(frame, selection)
 				end
 			end
 			local left, bottom, width, height = self:GetRect()
-			return (left or 0) * scale, ((left or 0) + (width or 0)) * scale, (bottom or 0) * scale,
+			return (left or 0) * scale,
+				((left or 0) + (width or 0)) * scale,
+				(bottom or 0) * scale,
 				((bottom or 0) + (height or 0)) * scale
 		end
 	end
@@ -929,9 +952,11 @@ local function ensureMagnetismAPI(frame, selection)
 			end
 			local myLeft, myRight, myBottom, myTop = self:GetScaledSelectionSides()
 			local otherLeft, otherRight, otherBottom, otherTop = systemFrame:GetScaledSelectionSides()
-			local horizontalEligible = (myTop >= otherBottom) and (myBottom <= otherTop)
+			local horizontalEligible = (myTop >= otherBottom)
+				and (myBottom <= otherTop)
 				and (myRight < otherLeft or myLeft > otherRight)
-			local verticalEligible = (myRight >= otherLeft) and (myLeft <= otherRight)
+			local verticalEligible = (myRight >= otherLeft)
+				and (myLeft <= otherRight)
 				and (myBottom > otherTop or myTop < otherBottom)
 			return horizontalEligible, verticalEligible
 		end
@@ -1449,26 +1474,6 @@ end
 local function buildDropdown()
 	local mixin = {}
 
-	function mixin:ApplyLayout()
-		if not (self.Label and self.Dropdown) then
-			return
-		end
-
-		local rowWidth = self:GetWidth() or 0
-		local labelWidth = self.Label:GetWidth() or 100
-		local leftGap = 5
-		local rightMargin = 2
-		local available = rowWidth - labelWidth - leftGap - rightMargin
-		if available < 1 then
-			return
-		end
-
-		self.Dropdown:SetWidth(available)
-		if self.OldDropdown then
-			self.OldDropdown:SetWidth(available)
-		end
-	end
-
 	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
@@ -1480,12 +1485,13 @@ local function buildDropdown()
 			self.OldDropdown:Show()
 			self.Dropdown = self.OldDropdown
 		else
-			if self.OldDropdown then self.OldDropdown:Hide() end
+			if self.OldDropdown then
+				self.OldDropdown:Hide()
+			end
 			self.Control:Show()
 			self.Dropdown = self.Control.Dropdown
 		end
 
-		self:ApplyLayout()
 		if data.generator then
 			self.Dropdown:SetupMenu(function(owner, rootDescription)
 				if data.height then
@@ -1531,8 +1537,12 @@ local function buildDropdown()
 		control:SetPoint("LEFT", label, "RIGHT", 5, 0)
 		frame.Control = control
 
-		if control.DecrementButton then control.DecrementButton:Hide() end
-		if control.IncrementButton then control.IncrementButton:Hide() end
+		if control.DecrementButton then
+			control.DecrementButton:Hide()
+		end
+		if control.IncrementButton then
+			control.IncrementButton:Hide()
+		end
 
 		local dropdown = control.Dropdown
 		dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
@@ -1554,34 +1564,6 @@ end
 
 local function buildMultiDropdown()
 	local mixin = {}
-
-	function mixin:ApplyLayout()
-		if not (self.Label and self.Dropdown) then
-			return
-		end
-
-		local rowWidth = self:GetWidth() or 0
-		local labelWidth = self.Label:GetWidth() or 100
-		local leftGap = 5
-		local rightMargin = 2
-		local available = rowWidth - labelWidth - leftGap - rightMargin
-		if available < 1 then
-			return
-		end
-
-		self.Dropdown:SetWidth(available)
-		if self.OldDropdown then
-			self.OldDropdown:SetWidth(available)
-		end
-
-		if self.Summary then
-			self.Summary:ClearAllPoints()
-			self.Summary:SetPoint("TOPLEFT", self.Dropdown, "BOTTOMLEFT", 0, -2)
-			self.Summary:SetPoint("TOPRIGHT", self.Dropdown, "BOTTOMRIGHT", 0, -2)
-			self.Summary:SetWidth(available)
-			self.summaryAnchored = true
-		end
-	end
 
 	function mixin:Setup(data, selection)
 		self.setting = data
@@ -1607,14 +1589,20 @@ local function buildMultiDropdown()
 			self.OldDropdown:Show()
 			self.Dropdown = self.OldDropdown
 		else
-			if self.OldDropdown then self.OldDropdown:Hide() end
+			if self.OldDropdown then
+				self.OldDropdown:Hide()
+			end
 			self.Control:Show()
 			self.Dropdown = self.Control.Dropdown
 		end
 
 		-- Keep both dropdown variants in sync so switching styles doesn't bring back "Custom"
-		if self.Control and self.Control.Dropdown then self.Control.Dropdown:SetDefaultText(defaultText) end
-		if self.OldDropdown then self.OldDropdown:SetDefaultText(defaultText) end
+		if self.Control and self.Control.Dropdown then
+			self.Control.Dropdown:SetDefaultText(defaultText)
+		end
+		if self.OldDropdown then
+			self.OldDropdown:SetDefaultText(defaultText)
+		end
 		self.Dropdown:SetDefaultText(defaultText)
 
 		if self.Summary then
@@ -1661,7 +1649,6 @@ local function buildMultiDropdown()
 			end
 		end)
 
-		self:ApplyLayout()
 		self:RefreshSummary()
 
 		Util:ApplyTooltip(self, self.Dropdown, data.tooltip)
@@ -1896,8 +1883,8 @@ local function buildColor()
 	end
 
 	function mixin:SetColor(r, g, b, a)
-			self.r, self.g, self.b, self.a = r, g, b, a
-			self.Swatch:SetColorTexture(r, g, b, a or 1)
+		self.r, self.g, self.b, self.a = r, g, b, a
+		self.Swatch:SetColorTexture(r, g, b, a or 1)
 	end
 
 	function mixin:OnClick()
@@ -1908,35 +1895,35 @@ local function buildColor()
 			b = prev.b,
 			opacity = prev.a,
 			hasOpacity = self.hasOpacity,
-				swatchFunc = function()
-					local r, g, b = ColorPickerFrame:GetColorRGB()
-					local a = self.hasOpacity
-						and (ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a)
-					self:SetColor(r, g, b, a)
-					self.setting.set(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
-					Internal:RequestRefreshSettings()
-				end,
-				opacityFunc = function()
-					if not self.hasOpacity then
-						return
-					end
+			swatchFunc = function()
 				local r, g, b = ColorPickerFrame:GetColorRGB()
-					local a = ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a
-					self:SetColor(r, g, b, a)
-					self.setting.set(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
-					Internal:RequestRefreshSettings()
-				end,
-				cancelFunc = function()
-					self:SetColor(prev.r, prev.g, prev.b, prev.a)
-					self.setting.set(
-						lib.activeLayoutName,
-						{ r = prev.r, g = prev.g, b = prev.b, a = prev.a },
-						lib:GetActiveLayoutIndex()
-					)
-					Internal:RequestRefreshSettings()
-				end,
-			})
-		end
+				local a = self.hasOpacity
+					and (ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a)
+				self:SetColor(r, g, b, a)
+				self.setting.set(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
+				Internal:RequestRefreshSettings()
+			end,
+			opacityFunc = function()
+				if not self.hasOpacity then
+					return
+				end
+				local r, g, b = ColorPickerFrame:GetColorRGB()
+				local a = ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a
+				self:SetColor(r, g, b, a)
+				self.setting.set(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
+				Internal:RequestRefreshSettings()
+			end,
+			cancelFunc = function()
+				self:SetColor(prev.r, prev.g, prev.b, prev.a)
+				self.setting.set(
+					lib.activeLayoutName,
+					{ r = prev.r, g = prev.g, b = prev.b, a = prev.a },
+					lib:GetActiveLayoutIndex()
+				)
+				Internal:RequestRefreshSettings()
+			end,
+		})
+	end
 
 	function mixin:SetEnabled(enabled)
 		if enabled then
@@ -2036,8 +2023,8 @@ local function buildCheckboxColor()
 	end
 
 	function mixin:SetColor(r, g, b, a)
-			self.r, self.g, self.b, self.a = r, g, b, a
-			self.Swatch:SetColorTexture(r, g, b, a or 1)
+		self.r, self.g, self.b, self.a = r, g, b, a
+		self.Swatch:SetColorTexture(r, g, b, a or 1)
 	end
 
 	function mixin:OnCheckboxClick()
@@ -2062,35 +2049,35 @@ local function buildCheckboxColor()
 			b = prev.b,
 			opacity = prev.a,
 			hasOpacity = self.hasOpacity,
-				swatchFunc = function()
-					local r, g, b = ColorPickerFrame:GetColorRGB()
-					local a = self.hasOpacity
-						and (ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a)
-					self:SetColor(r, g, b, a)
-					apply(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
-					Internal:RequestRefreshSettings()
-				end,
-				opacityFunc = function()
-					if not self.hasOpacity then
-						return
+			swatchFunc = function()
+				local r, g, b = ColorPickerFrame:GetColorRGB()
+				local a = self.hasOpacity
+					and (ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a)
+				self:SetColor(r, g, b, a)
+				apply(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
+				Internal:RequestRefreshSettings()
+			end,
+			opacityFunc = function()
+				if not self.hasOpacity then
+					return
 				end
 				local r, g, b = ColorPickerFrame:GetColorRGB()
-					local a = ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a
-					self:SetColor(r, g, b, a)
-					apply(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
-					Internal:RequestRefreshSettings()
-				end,
-				cancelFunc = function()
-					self:SetColor(prev.r, prev.g, prev.b, prev.a)
-					apply(
-						lib.activeLayoutName,
-						{ r = prev.r, g = prev.g, b = prev.b, a = prev.a },
-						lib:GetActiveLayoutIndex()
-					)
-					Internal:RequestRefreshSettings()
-				end,
-			})
-		end
+				local a = ColorPickerFrame.GetColorAlpha and ColorPickerFrame:GetColorAlpha() or prev.a
+				self:SetColor(r, g, b, a)
+				apply(lib.activeLayoutName, { r = r, g = g, b = b, a = a }, lib:GetActiveLayoutIndex())
+				Internal:RequestRefreshSettings()
+			end,
+			cancelFunc = function()
+				self:SetColor(prev.r, prev.g, prev.b, prev.a)
+				apply(
+					lib.activeLayoutName,
+					{ r = prev.r, g = prev.g, b = prev.b, a = prev.a },
+					lib:GetActiveLayoutIndex()
+				)
+				Internal:RequestRefreshSettings()
+			end,
+		})
+	end
 
 	function mixin:SetEnabled(enabled)
 		self.Check:SetEnabled(enabled)
@@ -2151,32 +2138,6 @@ end
 local function buildDropdownColor()
 	local mixin = {}
 
-	function mixin:ApplyLayout()
-		if not (self.Label and self.Button and self.Dropdown) then
-			return
-		end
-
-		local labelWidth = self.Label:GetWidth() or 100
-		local buttonWidth = self.Button:GetWidth() or COLOR_BUTTON_WIDTH
-		local rowWidth = self:GetWidth() or 0
-		local leftGap = 5
-		local buttonGap = 6
-		local rightMargin = 2
-		local available = rowWidth - labelWidth - buttonWidth - leftGap - buttonGap - rightMargin
-		if available < 1 then
-			return
-		end
-		local targetWidth = math.min(DROPDOWN_COLOR_MAX_WIDTH, available)
-
-		self.Dropdown:ClearAllPoints()
-		self.Dropdown:SetPoint("LEFT", self.Label, "RIGHT", leftGap, 0)
-		self.Dropdown:SetWidth(targetWidth)
-
-		self.Button:ClearAllPoints()
-		self.Button:SetPoint("LEFT", self.Dropdown, "RIGHT", rightMargin, 0)
-
-	end
-
 	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
@@ -2202,7 +2163,6 @@ local function buildDropdownColor()
 			self.Control:Show()
 			self.Dropdown = self.Control.Dropdown
 		end
-		self:ApplyLayout()
 
 		local function createEntries(rootDescription)
 			if data.height then
@@ -2254,8 +2214,8 @@ local function buildDropdownColor()
 	end
 
 	function mixin:SetColor(r, g, b, a)
-			self.r, self.g, self.b, self.a = r, g, b, a
-			self.Swatch:SetColorTexture(r, g, b, a or 1)
+		self.r, self.g, self.b, self.a = r, g, b, a
+		self.Swatch:SetColorTexture(r, g, b, a or 1)
 	end
 
 	function mixin:OnColorClick()
@@ -2377,43 +2337,6 @@ end
 local function buildSlider()
 	local mixin = {}
 
-	function mixin:ApplyInputLayout()
-		if not (self.Slider and self.Label) then
-			return
-		end
-		local input = self.Input
-		local inputShown = input and input:IsShown()
-		local inputWidth = (input:GetWidth() or 0) or 0
-		local inputGap = 6
-
-		self.Slider:ClearAllPoints()
-		self.Slider:SetPoint("LEFT", self.Label, "RIGHT", 5, 0)
-			self.Slider:SetPoint("RIGHT", self, "RIGHT", -(inputWidth + inputGap), 0)
-
-		if input then
-			input:ClearAllPoints()
-			if inputShown then
-				input:SetPoint("RIGHT", self, "RIGHT", -2, 0)
-			elseif self.Slider.RightText then
-				input:SetPoint("CENTER", self.Slider.RightText, "CENTER", 0, 0)
-			else
-				input:SetPoint("RIGHT", self.Slider, "RIGHT", -2, 0)
-			end
-		end
-
-		local rightText = self.Slider and self.Slider.RightText
-		if rightText then
-			rightText:ClearAllPoints()
-			if inputShown then
-				rightText:SetPoint("LEFT", self.Slider, "RIGHT", 25, 0)
-			else
-				rightText:SetPoint("RIGHT", self, "RIGHT", -2, 0)
-			end
-		end
-	end
-
-	mixin.ApplyLayout = mixin.ApplyInputLayout
-
 	function mixin:Setup(data, selection)
 		self.setting = data
 		self.Label:SetText(data.name)
@@ -2471,7 +2394,6 @@ local function buildSlider()
 					self.Slider.RightText:Show()
 				end
 			end
-			self:ApplyInputLayout()
 		end
 
 		self.initInProgress = false
@@ -2481,14 +2403,14 @@ local function buildSlider()
 	function mixin:OnSliderValueChanged(value)
 		if not self.initInProgress then
 			-- Avoid redundant setter calls on identical values (helps rapid slider drags).
-				if value ~= self.currentValue then
-					self.setting.set(lib.activeLayoutName, value, lib:GetActiveLayoutIndex())
-					self.currentValue = value
-					Internal:RequestRefreshSettings()
-				end
-				if self.Input and self.Input:IsShown() then
-					local fmt = self.formatters and self.formatters[MinimalSliderWithSteppersMixin.Label.Right]
-					self.Input:SetText(fmt and fmt(value) or tostring(value))
+			if value ~= self.currentValue then
+				self.setting.set(lib.activeLayoutName, value, lib:GetActiveLayoutIndex())
+				self.currentValue = value
+				Internal:RequestRefreshSettings()
+			end
+			if self.Input and self.Input:IsShown() then
+				local fmt = self.formatters and self.formatters[MinimalSliderWithSteppersMixin.Label.Right]
+				self.Input:SetText(fmt and fmt(value) or tostring(value))
 				if self.Slider.RightText and self.Slider.RightText:IsShown() then
 					self.Slider.RightText:Hide()
 				end
@@ -2513,7 +2435,7 @@ local function buildSlider()
 		Mixin(frame, mixin)
 
 		frame:SetHeight(DEFAULT_SLIDER_HEIGHT)
-		frame.Slider:SetWidth(200)
+		frame.Slider:SetWidth(167)
 		frame.Slider.MinText:Hide()
 		frame.Slider.MaxText:Hide()
 		frame.Label:SetPoint("LEFT")
@@ -2522,7 +2444,7 @@ local function buildSlider()
 		input:SetAutoFocus(false)
 		input:SetSize(34, 20)
 		input:SetJustifyH("CENTER")
-		input:SetPoint("RIGHT", frame, "RIGHT", -2, 0)
+		input:SetPoint("LEFT", frame.Slider, "RIGHT", 5, 0)
 		input:Hide()
 		frame.Input = input
 
@@ -2548,7 +2470,9 @@ local function buildSlider()
 			local val = tonumber(inputText)
 			if not val then
 				local fmt = owner.formatters and owner.formatters[MinimalSliderWithSteppersMixin.Label.Right]
-				box:SetText(fmt and owner.currentValue and fmt(owner.currentValue) or tostring(owner.currentValue or ""))
+				box:SetText(
+					fmt and owner.currentValue and fmt(owner.currentValue) or tostring(owner.currentValue or "")
+				)
 				return
 			end
 			if val < minV then
@@ -3159,11 +3083,11 @@ function Internal.CreateDialog()
 			scroll.ScrollBar:SetShown(needsScroll)
 		end
 
-		UpdateScrollChildWidth(self)
-
 		if scroll.UpdateScrollChildRect then
 			scroll:UpdateScrollChildRect()
 		end
+
+		UpdateScrollChildWidth(self)
 
 		if not needsScroll then
 			scroll:SetVerticalScroll(0)
@@ -3344,7 +3268,12 @@ local function finishSelectionDrag(self)
 	if not isDragAllowed(parent) then
 		return
 	end
-	if EditModeManagerFrame and EditModeManagerFrame.IsSnapEnabled and EditModeManagerFrame:IsSnapEnabled() and EditModeMagnetismManager then
+	if
+		EditModeManagerFrame
+		and EditModeManagerFrame.IsSnapEnabled
+		and EditModeManagerFrame:IsSnapEnabled()
+		and EditModeMagnetismManager
+	then
 		EditModeMagnetismManager:ApplyMagnetism(parent)
 	end
 	local point, x, y = deriveAnchorAndOffset(parent)
@@ -3921,18 +3850,22 @@ function Internal:RequestRefreshSettings()
 		self:RefreshSettings()
 		return
 	end
-	Internal._refreshRunner = Internal._refreshRunner or function()
-		Internal._refreshQueued = false
-		Internal:RefreshSettings()
-	end
+	Internal._refreshRunner = Internal._refreshRunner
+		or function()
+			Internal._refreshQueued = false
+			Internal:RefreshSettings()
+		end
 	C_Timer.After(0, Internal._refreshRunner)
 end
 
-
 function Internal:RefreshSettings()
-	if not (Internal.dialog and Internal.dialog:IsShown()) then return end
+	if not (Internal.dialog and Internal.dialog:IsShown()) then
+		return
+	end
 	local parent = Internal.dialog.Settings
-	if not parent then return end
+	if not parent then
+		return
+	end
 	local selectionParent = Internal.dialog.selection and Internal.dialog.selection.parent
 	local layoutName = lib.activeLayoutName
 	local layoutIndex = lib:GetActiveLayoutIndex()
@@ -3955,7 +3888,9 @@ function Internal:RefreshSettings()
 				end
 			end
 
-			local collapsedParent = (data.kind ~= lib.SettingType.Collapsible) and data.parentId and Collapse:Get(selectionParent, data.parentId)
+			local collapsedParent = (data.kind ~= lib.SettingType.Collapsible)
+				and data.parentId
+				and Collapse:Get(selectionParent, data.parentId)
 			local visible = evaluateVisibilityFast(data, layoutName, layoutIndex) and not collapsedParent
 			local wantIgnore = not visible
 			local haveIgnore = child.ignoreInLayout == true
@@ -3974,12 +3909,16 @@ function Internal:RefreshSettings()
 		end
 	end
 	if layoutDirty then
-		if parent.Layout then parent:Layout() end
+		if parent.Layout then
+			parent:Layout()
+		end
 		if Internal.dialog then
 			FixScrollBarInside(Internal.dialog.SettingsScroll)
 			UpdateScrollChildWidth(Internal.dialog)
 		end
-		if Internal.dialog and Internal.dialog.Layout then Internal.dialog:Layout() end
+		if Internal.dialog and Internal.dialog.Layout then
+			Internal.dialog:Layout()
+		end
 	end
 end
 

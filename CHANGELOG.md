@@ -4,6 +4,7 @@
 
 Fixed:
 - EditMode: Dividers now appear correctly on first expand; refresh applies to rows without `SetEnabled`.
+- EditMode: Prevented settings row width from shrinking after repeated resets (dropdowns/sliders stay aligned).
 
 ## [13] - 2026-01-22
 
