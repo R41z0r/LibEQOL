@@ -86,6 +86,7 @@ lib.pendingDeletedLayouts = State.pendingDeletedLayouts
 local DEFAULT_SETTINGS_SPACING = 2
 local DEFAULT_SLIDER_HEIGHT = 32
 local COLOR_BUTTON_WIDTH = 22
+local DEFAULT_INPUT_MAX_WIDTH = 170
 local DROPDOWN_COLOR_MAX_WIDTH = 200
 local DEFAULT_MANAGER_TOGGLE_MAX_HEIGHT = 220
 local DEFAULT_MANAGER_TOGGLE_ROW_HEIGHT = 32
@@ -453,6 +454,7 @@ lib.SettingType.DropdownColor = "DropdownColor"
 lib.SettingType.MultiDropdown = "MultiDropdown"
 lib.SettingType.Divider = "Divider"
 lib.SettingType.Collapsible = "Collapsible"
+lib.SettingType.Input = "Input"
 
 -- Debug toggle lives on internal; defaults to false
 Internal.debugEnabled = Internal.debugEnabled or false
@@ -2917,6 +2919,178 @@ local function buildDropdownColor()
 	end
 end
 
+local function formatInputValue(data, value)
+	if data and data.formatter then
+		local ok, formatted = pcall(data.formatter, value)
+		if ok and formatted ~= nil then
+			return tostring(formatted)
+		end
+	end
+	if value == nil then
+		return ""
+	end
+	return tostring(value)
+end
+
+local function buildInput()
+	local mixin = {}
+
+	function mixin:ApplyLayout()
+		local data = self.setting or self.data
+		local labelWidth = tonumber(data and data.labelWidth) or 100
+		self.Label:SetWidth(labelWidth)
+		local inputWidth = tonumber(data and data.inputWidth)
+		self.Input:ClearAllPoints()
+		self.Input:SetPoint("LEFT", self.Label, "RIGHT", 12, 0)
+		local maxWidth = DEFAULT_INPUT_MAX_WIDTH
+		local totalWidth = self:GetWidth() or 0
+		if totalWidth > 0 then
+			local available = totalWidth - labelWidth - 6 - 2
+			if available < 1 then
+				available = 1
+			end
+			if available < maxWidth then
+				maxWidth = available
+			end
+		end
+		if inputWidth and inputWidth > 0 then
+			if inputWidth > maxWidth then
+				inputWidth = maxWidth
+			end
+			self.Input:SetWidth(inputWidth)
+		else
+			self.Input:SetWidth(maxWidth)
+		end
+	end
+
+	function mixin:SetValue(value)
+		self.currentValue = value
+		self._suppressInput = true
+		self.Input:SetText(formatInputValue(self.setting, value))
+		self._suppressInput = nil
+	end
+
+	function mixin:CommitInput()
+		if not self.setting or self.readOnly then
+			self:SetValue(self.currentValue)
+			return
+		end
+		local text = self.Input:GetText() or ""
+		local value = text
+		if self.numeric then
+			local cleaned = (text or ""):gsub(",", ".")
+			local num = tonumber(cleaned)
+			if not num then
+				self:SetValue(self.currentValue)
+				return
+			end
+			value = num
+		end
+		if value ~= self.currentValue then
+			self.setting.set(lib.activeLayoutName, value, lib:GetActiveLayoutIndex())
+			self.currentValue = value
+			Internal:RequestRefreshSettings()
+		end
+		self:SetValue(self.currentValue)
+	end
+
+	function mixin:Setup(data, selection)
+		self.setting = data
+		self.data = data
+		self.Label:SetText(data.name or "")
+		applyRowHeightOverride(self, selection and selection.parent, "input")
+
+		self.numeric = not not data.numeric
+		self.readOnly = not not data.readOnly
+		self.selectAllOnFocus = data.selectAllOnFocus or self.readOnly
+
+		if data.maxChars then
+			self.Input:SetMaxLetters(data.maxChars)
+		else
+			self.Input:SetMaxLetters(0)
+		end
+
+		if data.justifyH then
+			self.Input:SetJustifyH(data.justifyH)
+		else
+			self.Input:SetJustifyH("LEFT")
+		end
+
+		if data.inputHeight then
+			self.Input:SetHeight(data.inputHeight)
+		end
+
+		local value = data.get(lib.activeLayoutName, lib:GetActiveLayoutIndex())
+		if value == nil then
+			value = data.default
+		end
+		self:SetValue(value)
+		self:ApplyLayout()
+		Util:ApplyTooltip(self, self.Input, data.tooltip)
+	end
+
+	function mixin:SetEnabled(enabled)
+		if enabled then
+			self.Input:Enable()
+			self.Label:SetFontObject("GameFontHighlightMedium")
+		else
+			self.Input:Disable()
+			self.Label:SetFontObject("GameFontDisable")
+		end
+	end
+
+	return function()
+		local frame = CreateFrame("Frame", nil, UIParent, "ResizeLayoutFrame")
+		frame.fixedHeight = DEFAULT_SLIDER_HEIGHT
+		frame:SetHeight(DEFAULT_SLIDER_HEIGHT)
+		Mixin(frame, mixin)
+
+		local label = frame:CreateFontString(nil, nil, "GameFontHighlightMedium")
+		label:SetPoint("LEFT")
+		label:SetWidth(100)
+		label:SetJustifyH("LEFT")
+		frame.Label = label
+
+		local input = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
+		input:SetAutoFocus(false)
+		input:SetHeight(20)
+		input:SetJustifyH("LEFT")
+		input:SetScript("OnEnterPressed", function(box)
+			box:ClearFocus()
+			frame:CommitInput()
+		end)
+		input:SetScript("OnEscapePressed", function(box)
+			frame:SetValue(frame.currentValue)
+			box:ClearFocus()
+		end)
+		input:SetScript("OnEditFocusLost", function()
+			frame:CommitInput()
+		end)
+		input:SetScript("OnEditFocusGained", function()
+			if frame.selectAllOnFocus then
+				input:HighlightText()
+			end
+		end)
+		input:SetScript("OnTextChanged", function(box, userInput)
+			if frame._suppressInput then
+				return
+			end
+			if frame.readOnly and userInput then
+				frame._suppressInput = true
+				box:SetText(formatInputValue(frame.setting, frame.currentValue))
+				box:HighlightText()
+				frame._suppressInput = nil
+			end
+		end)
+		frame.Input = input
+
+		return frame
+	end, function(_, frame)
+		frame:Hide()
+		frame.layoutIndex = nil
+	end
+end
+
 local function buildSlider()
 	local mixin = {}
 
@@ -3263,6 +3437,7 @@ local builders = {
 	[lib.SettingType.Dropdown] = buildDropdown,
 	[lib.SettingType.MultiDropdown] = buildMultiDropdown,
 	[lib.SettingType.Slider] = buildSlider,
+	[lib.SettingType.Input] = buildInput,
 	[lib.SettingType.Color] = buildColor,
 	[lib.SettingType.CheckboxColor] = buildCheckboxColor,
 	[lib.SettingType.DropdownColor] = buildDropdownColor,
@@ -4202,6 +4377,9 @@ function lib:AddFrame(frame, callback, default)
 		end
 		if default.dropdownColorHeight ~= nil then
 			setRowHeightOverride(frame, "dropdownColor", default.dropdownColorHeight)
+		end
+		if default.inputHeight ~= nil then
+			setRowHeightOverride(frame, "input", default.inputHeight)
 		end
 		if default.dividerHeight ~= nil then
 			setRowHeightOverride(frame, "divider", default.dividerHeight)

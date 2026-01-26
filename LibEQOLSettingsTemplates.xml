@@ -40,11 +40,84 @@
         </Layers>
     </Button>
 
+	<Frame name="LibEQOL@project-abbreviated-hash@_ColorSwatchTemplate" mixin="ColorSwatchMixin" propagateMouseInput="Both" virtual="true">
+		<Size x="16" y="16"/>
+		<Layers>
+			<Layer level="BACKGROUND" textureSubLevel="-3">
+				<Texture name="$parentSwatchBg" parentKey="SwatchBg" texelSnappingBias="0.0" snapToPixelGrid="false">
+					<Size x="14" y="14"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<Color color="HIGHLIGHT_FONT_COLOR"/>
+				</Texture>
+			</Layer>
+			<Layer level="BACKGROUND" textureSubLevel="-2">
+				<Texture parentKey="InnerBorder" texelSnappingBias="0.0" snapToPixelGrid="false">
+					<Size x="12" y="12"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<Color color="BLACK_FONT_COLOR"/>
+				</Texture>
+			</Layer>
+			<Layer level="BACKGROUND" textureSubLevel="-1">
+				<Texture parentKey="Color" texelSnappingBias="0.0" snapToPixelGrid="false">
+					<Size x="10" y="10"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<Color color="HIGHLIGHT_FONT_COLOR"/>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnShow>
+				PixelUtil.SetSize(self.SwatchBg, 14, 14);
+				PixelUtil.SetSize(self.InnerBorder, 12, 12);
+				PixelUtil.SetSize(self.Color, 10, 10);
+			</OnShow>
+			<OnEnter method="OnEnter"/>
+			<OnLeave method="OnLeave"/>
+		</Scripts>
+	</Frame>
+
+	<Frame name="LibEQOL@project-abbreviated-hash@_ColorOverrideTemplate" virtual="true">
+		<Size x="300" y="20"/>
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString parentKey="Text" inherits="OptionsFontSmall" justifyH="LEFT">
+					<Size x="0" y="10"/>
+					<Anchors>
+						<Anchor point="TOPLEFT" x="0" y="-5"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Button parentKey="ColorSwatch" inherits="LibEQOL@project-abbreviated-hash@_ColorSwatchTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT" relativeKey="$parent.Text" relativePoint="TOPLEFT" x="192" y="3"/>
+				</Anchors>
+			</Button>
+		</Frames>
+	</Frame>
+
     <Button name="LibEQOL@project-abbreviated-hash@_ScrollDropdownTemplate"
         virtual="true"
         inherits="SettingsDropdownControlTemplate"
         mixin="LibEQOL_ScrollDropdownMixin">
     </Button>
+
+    <Frame name="LibEQOL@project-abbreviated-hash@_InputControlTemplate"
+        virtual="true"
+        inherits="SettingsListElementTemplate"
+        mixin="LibEQOL_InputControlMixin">
+        <Size x="280" y="26"/>
+        <Scripts>
+            <OnLoad method="OnLoad"/>
+        </Scripts>
+    </Frame>
 
     <Frame name="LibEQOL@project-abbreviated-hash@_ColorOverridesPanel" mixin="LibEQOL_ColorOverridesMixin" virtual="true">
 		<Size x="200" y="60"/>
