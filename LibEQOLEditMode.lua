@@ -4122,6 +4122,7 @@ local function selectSelection(selection)
 		return
 	end
 	resetSelectionIndicators()
+	EventRegistry:TriggerEvent("EditModeExternal.hideDialog")
 	if EditModeManagerFrame and EditModeManagerFrame.ClearSelectedSystem then
 		EditModeManagerFrame:ClearSelectedSystem()
 	end
@@ -4420,6 +4421,10 @@ function lib:AddFrame(frame, callback, default)
 			if C_EditMode and C_EditMode.GetLayouts then
 				Layout:HandleLayoutsChanged(nil, C_EditMode.GetLayouts())
 			end
+		end)
+		EventRegistry:RegisterCallback("EditModeExternal.hideDialog", function()
+			hideOverlapMenu()
+			resetSelectionIndicators()
 		end)
 
 		EditModeManagerFrame:HookScript("OnShow", onEditModeEnter)

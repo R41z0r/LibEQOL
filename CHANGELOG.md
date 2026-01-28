@@ -6,6 +6,7 @@ Added:
 - EditMode: Manager toggle panel under EditModeManagerFrame (scrollable, two-column layout, categories, sorting, and eye toggle to hide overlays).
 - EditMode: Manager category API (`AddManagerCategory`) and toggle API (`AddManagerToggle`/`AddManagerCheckbox`).
 - EditMode: New Input setting row (plain text/number, readOnly, maxChars, inputWidth, formatter).
+- EditMode: Listen for `EditModeExternal.hideDialog` to close dialogs/selections for addon compatibility.
 - Settings: New Input control (`CreateInput`) with single-line + multiline support, readOnly, placeholder, and width/height options.
 - Settings: XML templates for Color Overrides (`_ColorSwatchTemplate`, `_ColorOverrideTemplate`).
 
