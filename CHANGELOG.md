@@ -16,6 +16,7 @@ Fixed:
 - EditMode: Dividers now appear correctly on first expand; refresh applies to rows without `SetEnabled`.
 - EditMode: Prevented settings row width from shrinking after repeated resets (dropdowns/sliders stay aligned).
 - EditMode: Settings enable-state cache now updates on rebuild/refresh, avoiding stale `isEnabled` after reset.
+- EditMode: `layout` callbacks now fire at least once on init (even when active layout is Modern/Classic).
 
 ## [13] - 2026-01-22
 

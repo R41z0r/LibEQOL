@@ -430,9 +430,6 @@ local function applyModifyPredicate(initializer, data)
 	if not (initializer and data and data.isEnabled) then
 		return
 	end
-	if data.parentCheck then
-		return
-	end
 	if not initializer.AddModifyPredicate then
 		return
 	end

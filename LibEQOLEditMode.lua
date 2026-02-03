@@ -458,6 +458,7 @@ lib.SettingType.Input = "Input"
 
 -- Debug toggle lives on internal; defaults to false
 Internal.debugEnabled = Internal.debugEnabled or false
+Internal.layoutCallbackInvoked = Internal.layoutCallbackInvoked or setmetatable({}, { __mode = "k" })
 
 -- Utilities -----------------------------------------------------------------------
 local Util = {}
@@ -1479,6 +1480,7 @@ local function ensureManagerTogglePanel()
 	if scroll.ScrollBar and scroll.ScrollBar.SetHideIfUnscrollable then
 		scroll.ScrollBar:SetHideIfUnscrollable(true)
 	end
+	FixScrollBarInside(scroll)
 
 	local list = CreateFrame("Frame", nil, scroll, "VerticalLayoutFrame")
 	list:SetWidth(1)
@@ -1803,6 +1805,28 @@ local function getCachedLayoutName(layoutIndex)
 	return layoutNames[layoutIndex]
 end
 
+local function notifyInitialLayoutCallbacks()
+	local layoutIndex = lib.activeLayoutIndex
+	if not layoutIndex then
+		return
+	end
+	local layoutName = lib.activeLayoutName or layoutNames[layoutIndex]
+	if not layoutName then
+		return
+	end
+	local handlers = lib.eventHandlersLayout
+	if not handlers then
+		return
+	end
+	local invoked = Internal.layoutCallbackInvoked
+	for _, callback in next, handlers do
+		if not invoked[callback] then
+			securecallfunction(callback, layoutName, layoutIndex)
+			invoked[callback] = true
+		end
+	end
+end
+
 local function updateActiveLayoutFromAPI()
 	if not C_EditMode or not C_EditMode.GetLayouts then
 		return
@@ -1814,16 +1838,11 @@ local function updateActiveLayoutFromAPI()
 	end
 	State.layoutSnapshot = snapshotLayoutNames(layouts)
 	Internal.layoutNameSnapshot = State.layoutSnapshot
+	notifyInitialLayoutCallbacks()
 end
 
-if not lib.activeLayoutName and C_EditMode and C_EditMode.GetLayouts then
-	local layouts = C_EditMode.GetLayouts()
-	if layouts and layouts.activeLayout then
-		lib.activeLayoutIndex = layouts.activeLayout
-		lib.activeLayoutName = layoutNames[layouts.activeLayout]
-	end
-	State.layoutSnapshot = snapshotLayoutNames(layouts)
-	Internal.layoutNameSnapshot = State.layoutSnapshot
+if not lib.activeLayoutName then
+	updateActiveLayoutFromAPI()
 end
 
 function Layout:HandleLayoutsChanged(_, layoutInfo)
@@ -1854,10 +1873,13 @@ function Layout:HandleLayoutsChanged(_, layoutInfo)
 	if layoutName and layoutIndex and (layoutName ~= lib.activeLayoutName or layoutIndex ~= lib.activeLayoutIndex) then
 		lib.activeLayoutName = layoutName
 		lib.activeLayoutIndex = layoutIndex
+		local invoked = Internal.layoutCallbackInvoked
 		for _, callback in next, lib.eventHandlersLayout do
 			securecallfunction(callback, layoutName, layoutIndex)
+			invoked[callback] = true
 		end
 	end
+	notifyInitialLayoutCallbacks()
 end
 
 function Layout:HandleSpecChanged()
@@ -4591,6 +4613,10 @@ function lib:RegisterCallback(event, callback)
 		table.insert(lib.eventHandlersExit, callback)
 	elseif event == "layout" then
 		table.insert(lib.eventHandlersLayout, callback)
+		if not lib.activeLayoutIndex then
+			updateActiveLayoutFromAPI()
+		end
+		notifyInitialLayoutCallbacks()
 	elseif event == "layoutadded" then
 		table.insert(lib.eventHandlersLayoutAdded, callback)
 	elseif event == "layoutdeleted" then
