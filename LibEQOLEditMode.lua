@@ -94,6 +94,8 @@ local MANAGER_TOGGLE_PANEL_PADDING = 12
 local MANAGER_TOGGLE_CATEGORY_SPACING = 8
 local MANAGER_TOGGLE_SECTION_SPACING = 4
 local MANAGER_TOGGLE_COLUMN_SPACING = 12
+local MANAGER_TOGGLE_EXPANDER_HEIGHT = 24
+local MANAGER_TOGGLE_EXPANDER_SPACING = 2
 local DEFAULT_MANAGER_TOGGLE_CATEGORY_ID = "_default"
 local DEFAULT_MANAGER_TOGGLE_CATEGORY_LABEL = "Other"
 
@@ -317,6 +319,7 @@ Internal.managerExtraFrames = Internal.managerExtraFrames
 	}
 Internal.managerHiddenFrames = Internal.managerHiddenFrames or {}
 Internal.managerToggleMaxHeight = Internal.managerToggleMaxHeight or DEFAULT_MANAGER_TOGGLE_MAX_HEIGHT
+Internal.managerToggleExpanded = Internal.managerToggleExpanded ~= false
 Internal.managerEyeLocales = Internal.managerEyeLocales
 	or {
 		enUS = {
@@ -421,6 +424,8 @@ local select = _G.select
 local next = _G.next
 local table = _G.table
 local UIErrorsFrame = _G.UIErrorsFrame
+local HUD_EDIT_MODE_COLLAPSE_OPTIONS = _G.HUD_EDIT_MODE_COLLAPSE_OPTIONS
+local HUD_EDIT_MODE_EXPAND_OPTIONS = _G.HUD_EDIT_MODE_EXPAND_OPTIONS
 
 local C_EditMode = _G.C_EditMode
 local C_EditMode_GetLayouts = C_EditMode and C_EditMode.GetLayouts
@@ -1458,6 +1463,13 @@ local function createManagerToggleButton(parent)
 	return button
 end
 
+local function getManagerToggleExpanderLabel(expanded)
+	if expanded then
+		return HUD_EDIT_MODE_COLLAPSE_OPTIONS or "Collapse options"
+	end
+	return HUD_EDIT_MODE_EXPAND_OPTIONS or "Expand options"
+end
+
 local function ensureManagerTogglePanel()
 	if Internal.managerTogglePanel or not EditModeManagerFrame then
 		return Internal.managerTogglePanel
@@ -1490,26 +1502,61 @@ local function ensureManagerTogglePanel()
 	list.spacing = MANAGER_TOGGLE_CATEGORY_SPACING
 	scroll:SetScrollChild(list)
 
+	local expander = CreateFrame("Frame", nil, panel, "ResizeLayoutFrame")
+	expander.ignoreInLayout = true
+	expander:SetPoint("BOTTOMLEFT", panel, "BOTTOMLEFT", MANAGER_TOGGLE_PANEL_PADDING, MANAGER_TOGGLE_PANEL_PADDING)
+	expander:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -MANAGER_TOGGLE_PANEL_PADDING, MANAGER_TOGGLE_PANEL_PADDING)
+	expander:SetHeight(MANAGER_TOGGLE_EXPANDER_HEIGHT)
+	expander:EnableMouse(true)
+
+	local divider = expander:CreateTexture(nil, "ARTWORK")
+	divider:SetTexture([[Interface\FriendsFrame\UI-FriendsFrame-OnlineDivider]])
+	divider:SetPoint("TOPLEFT", expander, "TOPLEFT", 0, 0)
+	divider:SetPoint("TOPRIGHT", expander, "TOPRIGHT", 0, 0)
+	divider:SetHeight(16)
+	expander.Divider = divider
+
+	local label = expander:CreateFontString(nil, "ARTWORK", "GameFontHighlightMedium")
+	label:SetPoint("TOP", divider, "BOTTOM", 0, 4)
+	expander.Label = label
+
+	expander:SetScript("OnMouseUp", function()
+		panel:ToggleExpandedState()
+	end)
+
 	panel.Scroll = scroll
 	panel.List = list
+	panel.Expander = expander
 	panel.padding = MANAGER_TOGGLE_PANEL_PADDING
 	panel.maxHeight = Internal.managerToggleMaxHeight or DEFAULT_MANAGER_TOGGLE_MAX_HEIGHT
+	panel.expanderHeight = MANAGER_TOGGLE_EXPANDER_HEIGHT
+	panel.expanderSpacing = MANAGER_TOGGLE_EXPANDER_SPACING
+	panel.expanded = Internal.managerToggleExpanded ~= false
 
 	function panel:ApplyScrollLimit()
-		if list.Layout then
-			list:Layout()
-		end
-
-		local contentHeight = list:GetHeight() or 1
-		local targetHeight = contentHeight
+		local isExpanded = self.expanded ~= false
+		scroll:SetShown(isExpanded)
+		local targetHeight = 0
 		local needsScroll = false
-		local maxHeight = self.maxHeight
-		if maxHeight and contentHeight > maxHeight then
-			targetHeight = maxHeight
-			needsScroll = true
-		end
-		if targetHeight < 1 then
-			targetHeight = 1
+
+		if isExpanded then
+			if scroll.UpdateScrollChildRect then
+				scroll:UpdateScrollChildRect()
+			end
+			if list.Layout then
+				list:Layout()
+			end
+
+			local contentHeight = list:GetHeight() or 1
+			targetHeight = contentHeight
+			local maxHeight = self.maxHeight
+			if maxHeight and contentHeight > maxHeight then
+				targetHeight = maxHeight
+				needsScroll = true
+			end
+			if targetHeight < 1 then
+				targetHeight = 1
+			end
 		end
 
 		if scroll._eqolLastHeight ~= targetHeight then
@@ -1518,32 +1565,58 @@ local function ensureManagerTogglePanel()
 			scroll.fixedHeight = targetHeight
 		end
 
-		local panelHeight = targetHeight + (self.padding * 2)
+		local panelHeight = self.expanderHeight + (self.padding * 2)
+		if isExpanded then
+			panelHeight = panelHeight + targetHeight + self.expanderSpacing
+		end
 		if panel._eqolLastHeight ~= panelHeight then
 			panel._eqolLastHeight = panelHeight
 			panel:SetHeight(panelHeight)
 		end
 
 		if scroll.ScrollBar and scroll.ScrollBar.SetShown then
-			scroll.ScrollBar:SetShown(needsScroll)
+			scroll.ScrollBar:SetShown(isExpanded and needsScroll)
 		end
 
-		if scroll.UpdateScrollChildRect then
+		if isExpanded and scroll.UpdateScrollChildRect then
 			scroll:UpdateScrollChildRect()
 		end
 
-		UpdateScrollChildWidthFor(scroll, list)
-		if Internal.UpdateManagerToggleLayout then
-			Internal:UpdateManagerToggleLayout()
+		if isExpanded then
+			UpdateScrollChildWidthFor(scroll, list)
+			if Internal.UpdateManagerToggleLayout then
+				Internal:UpdateManagerToggleLayout()
+			end
 		end
 
-		if not needsScroll then
+		if (not isExpanded) or (not needsScroll) then
 			scroll:SetVerticalScroll(0)
 		else
 			local maxScroll = scroll:GetVerticalScrollRange()
 			scroll:SetVerticalScroll(math.min(scroll:GetVerticalScroll(), maxScroll))
 		end
 	end
+
+	function panel:SetExpandedState(expanded)
+		local wasExpanded = self.expanded ~= false
+		self.expanded = not not expanded
+		Internal.managerToggleExpanded = self.expanded
+		self.Expander.Label:SetText(getManagerToggleExpanderLabel(self.expanded))
+		self:ApplyScrollLimit()
+		if self.expanded and not wasExpanded and C_Timer and C_Timer.After then
+			C_Timer.After(0, function()
+				if self and self.expanded and self.ApplyScrollLimit and self:IsShown() then
+					self:ApplyScrollLimit()
+				end
+			end)
+		end
+	end
+
+	function panel:ToggleExpandedState()
+		self:SetExpandedState(not self.expanded)
+	end
+
+	panel:SetExpandedState(panel.expanded)
 
 	Internal.managerTogglePanel = panel
 	return panel
