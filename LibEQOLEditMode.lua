@@ -1483,6 +1483,7 @@ local function ensureManagerTogglePanel()
 	if scroll.ScrollBar and scroll.ScrollBar.SetHideIfUnscrollable then
 		scroll.ScrollBar:SetHideIfUnscrollable(true)
 	end
+	FixScrollBarInside(scroll)
 
 	local list = CreateFrame("Frame", nil, scroll, "VerticalLayoutFrame")
 	list:SetWidth(1)
