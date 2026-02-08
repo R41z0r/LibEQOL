@@ -46,6 +46,16 @@
         mixin="LibEQOL_ScrollDropdownMixin">
     </Button>
 
+    <Frame name="LibEQOL@project-abbreviated-hash@_InputControlTemplate"
+        virtual="true"
+        inherits="SettingsListElementTemplate"
+        mixin="LibEQOL_InputControlMixin">
+        <Size x="280" y="26"/>
+        <Scripts>
+            <OnLoad method="OnLoad"/>
+        </Scripts>
+    </Frame>
+
     <Frame name="LibEQOL@project-abbreviated-hash@_ColorOverridesPanel" mixin="LibEQOL_ColorOverridesMixin" virtual="true">
 		<Size x="200" y="60"/>
 		<Layers>
