@@ -25,7 +25,7 @@ end
 function LibEQOL_ColorOverridesMixin:OnLoad()
 	SettingsListElementMixin.OnLoad(self)
 	self.container = self.ItemQualities or self.List or self
-	self.ColorOverrideFramePool = CreateFramePool("FRAME", self.container, "LibEQOL@project-abbreviated-hash@_ColorOverrideTemplate")
+	self.ColorOverrideFramePool = CreateFramePool("FRAME", self.container, "ColorOverrideTemplate")
 	self.colorOverrideFrames = {}
 	-- Disable the default hover background from SettingsListElementTemplate; Blizzard's color overrides rows don't highlight.
 	if self.Tooltip and self.Tooltip.HoverBackground then
