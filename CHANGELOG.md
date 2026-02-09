@@ -1,5 +1,11 @@
 # Changelog
 
+## [17] - 2026-02-09
+
+Optimized:
+- EditMode: Reduced repeated `C_EditMode.GetLayouts()` calls by caching lazy `layoutNames` lookups and syncing cache entries from layout snapshots.
+- EditMode: Switched specialization listener to `RegisterUnitEvent("PLAYER_SPECIALIZATION_CHANGED", "player")` to avoid unnecessary non-player event handling.
+
 ## [16] - 2026-02-08
 
 Fixed:
