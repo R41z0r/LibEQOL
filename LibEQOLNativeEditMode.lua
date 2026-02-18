@@ -1,23 +1,13 @@
-local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 11000000
+local MODULE_MAJOR, MINOR = "LibEQOLNativeEditMode-1.0", 10000
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 local C_Timer = _G.C_Timer
 
--- Primary sublib name; BASE_MAJOR remains as an alias for existing callers.
-local moduleLib, moduleMinor = LibStub:GetLibrary(MODULE_MAJOR, true)
-local baseLib, baseMinor = LibStub:GetLibrary(BASE_MAJOR, true)
-local lib = moduleLib or baseLib
-local oldMinor = moduleMinor or baseMinor
-
-if baseMinor and (not oldMinor or baseMinor > oldMinor) then
-	lib, oldMinor = baseLib, baseMinor
-end
+local lib, oldMinor = LibStub:GetLibrary(MODULE_MAJOR, true)
 
 if oldMinor and oldMinor >= MINOR then
 	LibStub.libs[MODULE_MAJOR] = lib
 	LibStub.minors[MODULE_MAJOR] = oldMinor
-	LibStub.libs[BASE_MAJOR] = lib
-	LibStub.minors[BASE_MAJOR] = oldMinor
 	return
 end
 
@@ -27,8 +17,6 @@ else
 	LibStub.libs[MODULE_MAJOR] = lib
 	LibStub.minors[MODULE_MAJOR] = MINOR
 end
-LibStub.libs[BASE_MAJOR] = lib
-LibStub.minors[BASE_MAJOR] = MINOR
 
 -- Namespaces/state ----------------------------------------------------------------
 lib.internal = lib.internal or {}
@@ -98,6 +86,12 @@ local MANAGER_TOGGLE_EXPANDER_HEIGHT = 24
 local MANAGER_TOGGLE_EXPANDER_SPACING = 2
 local DEFAULT_MANAGER_TOGGLE_CATEGORY_ID = "_default"
 local DEFAULT_MANAGER_TOGGLE_CATEGORY_LABEL = "Other"
+local DEFAULT_NATIVE_SNAP_ENABLED = true
+local DEFAULT_NATIVE_GRID_ENABLED = false
+local DEFAULT_NATIVE_GRID_SIZE = 64
+local DEFAULT_NATIVE_NUDGE_STEP = 1
+local DEFAULT_NATIVE_NUDGE_SHIFT_STEP = 10
+local DEFAULT_NATIVE_SNAP_RANGE = 8
 
 local function normalizeManagerCategoryId(id, label)
 	if id and id ~= "" then
@@ -254,88 +248,38 @@ local function UpdateScrollChildWidth(dialog)
 	UpdateScrollChildWidthFor(scroll, child)
 end
 
--- Blizzard frames we also toggle via the manager eye (if they exist)
-Internal.managerExtraFrames = Internal.managerExtraFrames
-	or {
-		"PlayerFrame",
-		"TargetFrame",
-		"FocusFrame",
-		"PartyFrame",
-		"CompactRaidFrameContainer",
-		"BossTargetFrameContainer",
-		"ArenaEnemyFramesContainer",
-		"MinimapCluster",
-		"MainMenuBar",
-		"ObjectiveTrackerFrame",
-		-- Action bars / buttons
-		"MainActionBar",
-		"MultiBarBottomLeft",
-		"MultiBarBottomRight",
-		"MultiBarRight",
-		"MultiBarLeft",
-		"MultiBar5",
-		"MultiBar6",
-		"MultiBar7",
-		"MultiBar8",
-		"StanceBar",
-		"StanceBarFrame",
-		"PetActionBar",
-		"PossessActionBar",
-		"ExtraAbilityContainer",
-		"MainMenuBarVehicleLeaveButton",
-		"EncounterBar",
-		"UtilityCooldownViewer",
-		"EssentialCooldownViewer",
-		"BuffIconCooldownViewer",
-		"BuffBarCooldownViewer",
-		-- Bags / micromenu
-		"BagsBar",
-		"MicroMenuContainer",
-		-- Tooltips / chat / loot
-		"GameTooltipDefaultContainer",
-		"ChatFrame1",
-		"LootFrame",
-		-- Unit frames
-		"PetFrame",
-		"CompactArenaFrame",
-		"DurabilityFrame",
-		"DebuffFrame",
-		"BuffFrame",
-		"TalkingHeadFrame",
-		"MainStatusTrackingBarContainer",
-		"SecondaryStatusTrackingBarContainer",
-		"PlayerCastingBarFrame",
-		-- Midnight only now
-		"PersonalResourceDisplayFrame",
-		"EncounterTimeline",
-		"DamageMeter",
-		"CriticalEncounterWarnings",
-		"MediumEncounterWarnings",
-		"MinorEncounterWarnings",
-		"MirrorTimerContainer",
-		"ArcheologyDigsideProgressBar",
-		"VehicleSeatIndicator",
-		"ExternalDefensivesFrame",
-	}
+Internal.managerExtraFrames = Internal.managerExtraFrames or {}
 Internal.managerHiddenFrames = Internal.managerHiddenFrames or {}
 Internal.managerToggleMaxHeight = Internal.managerToggleMaxHeight or DEFAULT_MANAGER_TOGGLE_MAX_HEIGHT
 Internal.managerToggleExpanded = Internal.managerToggleExpanded ~= false
+Internal.snapEnabled = Internal.snapEnabled
+if Internal.snapEnabled == nil then
+	Internal.snapEnabled = DEFAULT_NATIVE_SNAP_ENABLED
+end
+Internal.gridEnabled = Internal.gridEnabled
+if Internal.gridEnabled == nil then
+	Internal.gridEnabled = DEFAULT_NATIVE_GRID_ENABLED
+end
+Internal.gridSize = normalizePositive(Internal.gridSize, DEFAULT_NATIVE_GRID_SIZE)
+Internal.nudgeStep = normalizePositive(Internal.nudgeStep, DEFAULT_NATIVE_NUDGE_STEP)
+Internal.nudgeShiftStep = normalizePositive(Internal.nudgeShiftStep, DEFAULT_NATIVE_NUDGE_SHIFT_STEP)
+Internal.snapRange = normalizePositive(Internal.snapRange, DEFAULT_NATIVE_SNAP_RANGE)
 Internal.managerEyeLocales = Internal.managerEyeLocales
 	or {
 		enUS = {
 			show = "Show all windows",
 			hide = "Hide all windows",
-			body = "Toggles every edit mode window, including Blizzard frames.",
+			body = "Toggles all LibEQOL native edit overlays.",
 		},
 		enGB = {
 			show = "Show all windows",
 			hide = "Hide all windows",
-			body = "Toggles every edit mode window, including Blizzard frames.",
+			body = "Toggles all LibEQOL native edit overlays.",
 		},
 		deDE = {
 			show = "Alle Fenster einblenden",
 			hide = "Alle Fenster ausblenden",
-			body = "Schaltet alle Edit-Mode-Fenster inklusive Blizzard-Frames um.",
+			body = "Schaltet alle nativen LibEQOL-Overlays um.",
 		},
 		frFR = {
 			show = "Afficher toutes les fenêtres",
@@ -408,14 +352,14 @@ local SOUNDKIT = _G.SOUNDKIT
 local GetCursorPosition = _G.GetCursorPosition
 local GetMouseFoci = _G.GetMouseFoci or _G.GetMouseFocus
 local Enum = _G.Enum
-local EditModeManagerFrame = _G.EditModeManagerFrame
+local EditModeManagerFrame
 local GenerateClosure = _G.GenerateClosure
 local MinimalSliderWithSteppersMixin = _G.MinimalSliderWithSteppersMixin
 local CreateMinimalSliderFormatter = _G.CreateMinimalSliderFormatter
 local GetBuildInfo = _G.GetBuildInfo
 local PlaySound = _G.PlaySound
 local math = _G.math
-local EditModeMagnetismManager = _G.EditModeMagnetismManager
+local EditModeMagnetismManager
 local tostring = _G.tostring
 local type = _G.type
 local pairs = _G.pairs
@@ -699,6 +643,10 @@ local function updateOverlayVisibility(selection, hidden)
 	if not selection then
 		return
 	end
+	if selection.SetOverlayVisibility then
+		selection:SetOverlayVisibility(hidden)
+		return
+	end
 	selection.overlayHidden = not not hidden
 	selection.overlayAlphas = selection.overlayAlphas or {}
 	for _, region in ipairs({ selection:GetRegions() }) do
@@ -741,6 +689,66 @@ end
 
 local function isInCombat()
 	return InCombatLockdown and InCombatLockdown()
+end
+
+local MAX_FRAME_LEVEL = 10000
+local SELECTION_FRAME_LEVEL_OFFSET = 256
+local FRAME_STRATA_ORDER = {
+	BACKGROUND = 1,
+	LOW = 2,
+	MEDIUM = 3,
+	HIGH = 4,
+	DIALOG = 5,
+	FULLSCREEN = 6,
+	FULLSCREEN_DIALOG = 7,
+	TOOLTIP = 8,
+}
+local MIN_SELECTION_STRATA = "DIALOG"
+local MIN_SELECTION_STRATA_RANK = FRAME_STRATA_ORDER[MIN_SELECTION_STRATA]
+
+local function clampFrameLevel(level)
+	if level < 1 then
+		return 1
+	end
+	if level > MAX_FRAME_LEVEL then
+		return MAX_FRAME_LEVEL
+	end
+	return level
+end
+
+local function normalizeSelectionStrata(strata)
+	local rank = FRAME_STRATA_ORDER[strata]
+	if not rank or rank < MIN_SELECTION_STRATA_RANK then
+		return MIN_SELECTION_STRATA
+	end
+	return strata
+end
+
+local function syncSelectionLayer(selection)
+	if not selection then
+		return
+	end
+	local parent = selection.parent
+	if not parent then
+		return
+	end
+	local strata = parent.GetFrameStrata and parent:GetFrameStrata()
+	if not strata or strata == "" then
+		strata = "DIALOG"
+	end
+	strata = normalizeSelectionStrata(strata)
+	if selection.GetFrameStrata and selection.SetFrameStrata then
+		if selection:GetFrameStrata() ~= strata then
+			selection:SetFrameStrata(strata)
+		end
+	end
+	if selection.GetFrameLevel and selection.SetFrameLevel then
+		local parentLevel = parent.GetFrameLevel and parent:GetFrameLevel() or 0
+		local desiredLevel = clampFrameLevel(parentLevel + SELECTION_FRAME_LEVEL_OFFSET)
+		if selection:GetFrameLevel() ~= desiredLevel then
+			selection:SetFrameLevel(desiredLevel)
+		end
+	end
 end
 
 local function roundOffset(val)
@@ -1175,7 +1183,158 @@ local function restoreManagerExtraFrames(setAlphaToOne)
 	end
 end
 
-local function updateManagerEyeButton()
+local updateManagerEyeButton
+
+function Internal:EnsureManagerFrame()
+	if EditModeManagerFrame then
+		return EditModeManagerFrame
+	end
+
+	local frame = CreateFrame("Frame", "LibEQOLNativeEditModeManagerFrame", UIParent, "BackdropTemplate")
+	frame:SetSize(460, 98)
+	frame:SetPoint("TOP", UIParent, "TOP", 0, -120)
+	frame:SetFrameStrata("DIALOG")
+	frame:SetFrameLevel(200)
+	frame:SetClampedToScreen(true)
+	frame:SetMovable(true)
+	frame:EnableMouse(true)
+	frame:RegisterForDrag("LeftButton")
+	frame:SetScript("OnDragStart", function(self)
+		self:StartMoving()
+	end)
+	frame:SetScript("OnDragStop", function(self)
+		self:StopMovingOrSizing()
+	end)
+	frame:SetBackdrop({
+		bgFile = "Interface/Tooltips/UI-Tooltip-Background",
+		edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+		tile = true,
+		tileSize = 16,
+		edgeSize = 12,
+		insets = { left = 3, right = 3, top = 3, bottom = 3 },
+	})
+	frame:SetBackdropColor(0.03, 0.03, 0.03, 0.94)
+	frame:SetBackdropBorderColor(0.45, 0.7, 1, 0.95)
+
+	local title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+	title:SetPoint("TOPLEFT", 12, -10)
+	title:SetText("LibEQOL Native Edit Mode")
+
+	local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+	close:SetPoint("TOPRIGHT", 2, 2)
+	close:SetScript("OnClick", function()
+		frame:Hide()
+	end)
+	frame.CloseButton = close
+	frame.Close = close
+
+	local snapCheck = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+	snapCheck:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -10)
+	snapCheck:SetChecked(Internal.snapEnabled and true or false)
+	snapCheck:SetScript("OnClick", function(self)
+		Internal.snapEnabled = self:GetChecked() and true or false
+		if not Internal.snapEnabled and Internal.HideSnapGuides then
+			Internal:HideSnapGuides()
+		end
+	end)
+	local snapLabel = snapCheck:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	snapLabel:SetPoint("LEFT", snapCheck, "RIGHT", 2, 0)
+	snapLabel:SetText("Snap")
+	frame.EnableSnapCheckButton = snapCheck
+
+	local gridCheck = CreateFrame("CheckButton", nil, frame, "UICheckButtonTemplate")
+	gridCheck:SetPoint("LEFT", snapLabel, "RIGHT", 18, 0)
+	gridCheck:SetChecked(Internal.gridEnabled and true or false)
+	gridCheck:SetScript("OnClick", function(self)
+		Internal.gridEnabled = self:GetChecked() and true or false
+		if Internal.UpdateGridVisibility then
+			Internal:UpdateGridVisibility()
+		end
+	end)
+	local gridLabel = gridCheck:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	gridLabel:SetPoint("LEFT", gridCheck, "RIGHT", 2, 0)
+	gridLabel:SetText("Grid")
+	frame.GridCheckButton = gridCheck
+
+	local sizeLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	sizeLabel:SetPoint("LEFT", gridLabel, "RIGHT", 16, 0)
+	sizeLabel:SetText("Grid Size")
+
+	local gridSizeInput = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
+	gridSizeInput:SetAutoFocus(false)
+	gridSizeInput:SetSize(44, 20)
+	gridSizeInput:SetPoint("LEFT", sizeLabel, "RIGHT", 8, 0)
+	gridSizeInput:SetNumeric(true)
+	gridSizeInput:SetMaxLetters(4)
+	gridSizeInput:SetText(tostring(Internal.gridSize or DEFAULT_NATIVE_GRID_SIZE))
+	gridSizeInput:SetScript("OnEnterPressed", function(self)
+		local value = normalizePositive(self:GetNumber(), DEFAULT_NATIVE_GRID_SIZE)
+		Internal.gridSize = value
+		self:SetText(tostring(value))
+		if Internal.UpdateGridVisibility then
+			Internal:UpdateGridVisibility()
+		end
+		self:ClearFocus()
+	end)
+	gridSizeInput:SetScript("OnEscapePressed", function(self)
+		self:SetText(tostring(Internal.gridSize or DEFAULT_NATIVE_GRID_SIZE))
+		self:ClearFocus()
+	end)
+	gridSizeInput:SetScript("OnEditFocusLost", function(self)
+		self:SetText(tostring(Internal.gridSize or DEFAULT_NATIVE_GRID_SIZE))
+	end)
+	frame.GridSizeInput = gridSizeInput
+
+	local toggleButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+	toggleButton:SetPoint("BOTTOMLEFT", 12, 10)
+	toggleButton:SetSize(130, 22)
+	toggleButton:SetText("Toggle Overlays")
+	toggleButton:SetScript("OnClick", function()
+		local hidden = areAllOverlayTogglesHidden()
+		setAllOverlayHidden(not hidden)
+		if updateManagerEyeButton then
+			updateManagerEyeButton()
+		end
+		if Internal.dialog and Internal.dialog.selection and Internal.dialog.HideLabelButton then
+			updateEyeButton(Internal.dialog.HideLabelButton, Internal.dialog.selection.overlayHidden)
+			Internal.dialog:Layout()
+		end
+	end)
+
+	function frame:IsSnapEnabled()
+		return Internal.snapEnabled and true or false
+	end
+
+	function frame:SetSnapPreviewFrame(previewFrame)
+		self.snapPreviewFrame = previewFrame
+	end
+
+	function frame:ClearSnapPreviewFrame()
+		self.snapPreviewFrame = nil
+	end
+
+	function frame:ClearSelectedSystem() end
+	function frame:SelectSystem() end
+
+	frame:HookScript("OnShow", function(self)
+		if self.EnableSnapCheckButton then
+			self.EnableSnapCheckButton:SetChecked(Internal.snapEnabled and true or false)
+		end
+		if self.GridCheckButton then
+			self.GridCheckButton:SetChecked(Internal.gridEnabled and true or false)
+		end
+		if self.GridSizeInput then
+			self.GridSizeInput:SetText(tostring(Internal.gridSize or DEFAULT_NATIVE_GRID_SIZE))
+		end
+	end)
+
+	frame:Hide()
+
+	EditModeManagerFrame = frame
+	return frame
+end
+
+updateManagerEyeButton = function()
 	local button = Internal.managerEyeButton
 	if not button then
 		return
@@ -1194,7 +1353,11 @@ local function updateManagerEyeButton()
 end
 
 local function ensureManagerEyeButton()
-	if Internal.managerEyeButton or not EditModeManagerFrame then
+	if Internal.managerEyeButton then
+		return
+	end
+	EditModeManagerFrame = EditModeManagerFrame or Internal:EnsureManagerFrame()
+	if not EditModeManagerFrame then
 		return
 	end
 	local close = EditModeManagerFrame.CloseButton
@@ -4023,6 +4186,404 @@ end
 -- Selection and movement -----------------------------------------------------------
 local Selection = {}
 
+function Internal:CreateNativeSelection(parent)
+	local parentFrame = parent or UIParent
+	local selection = CreateFrame("Button", nil, parentFrame, "BackdropTemplate")
+	selection.parent = parentFrame
+	selection:SetAllPoints()
+	selection:EnableMouse(true)
+	selection:RegisterForDrag("LeftButton")
+	selection:SetPropagateMouseClicks(false)
+	selection:SetScript("OnShow", function(self)
+		syncSelectionLayer(self)
+	end)
+	syncSelectionLayer(selection)
+	selection:SetBackdrop({
+		bgFile = "Interface/Buttons/WHITE8X8",
+		edgeFile = "Interface/Buttons/WHITE8X8",
+		tile = false,
+		edgeSize = 1,
+	})
+	selection:SetBackdropColor(0.05, 0.35, 0.65, 0.10)
+	selection:SetBackdropBorderColor(0.25, 0.70, 1.00, 0.90)
+
+	local label = selection:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	label:SetPoint("TOP", selection, "TOP", 0, -6)
+	label:SetText(parentFrame.editModeName or parentFrame:GetName() or "Frame")
+	label:SetTextColor(1, 1, 1, 0.95)
+	selection.Label = label
+	selection.Text = label
+
+	function selection:UpdateLabelVisibility()
+		if self.labelHidden then
+			self.Label:SetText("")
+			return
+		end
+		if self.isSelected then
+			self.Label:SetText(self.systemBaseName or parentFrame.editModeName or parentFrame:GetName() or "Frame")
+		else
+			self.Label:SetText(HUD_EDIT_MODE_INSTRUCTIONS_CLICK_TO_EDIT or "Click to edit")
+		end
+	end
+
+	function selection:ShowHighlighted()
+		self.isSelected = false
+		self:SetBackdropColor(0.05, 0.35, 0.65, 0.10)
+		self:SetBackdropBorderColor(0.25, 0.70, 1.00, 0.90)
+		self:UpdateLabelVisibility()
+		self:Show()
+	end
+
+	function selection:ShowSelected()
+		self.isSelected = true
+		self:SetBackdropColor(1.00, 0.75, 0.05, 0.10)
+		self:SetBackdropBorderColor(1.00, 0.82, 0.10, 0.95)
+		self:UpdateLabelVisibility()
+		self:Show()
+	end
+
+	function selection:IsSelected()
+		return self.isSelected and true or false
+	end
+
+	function selection:SetOverlayVisibility(hidden)
+		self.overlayHidden = not not hidden
+		self:SetAlpha(hidden and 0 or 1)
+	end
+
+	return selection
+end
+
+local function ensureNativeGridFrame()
+	if Internal.gridFrame then
+		return Internal.gridFrame
+	end
+
+	local grid = CreateFrame("Frame", "LibEQOLNativeEditModeGrid", UIParent)
+	grid:SetFrameStrata("BACKGROUND")
+	grid:SetFrameLevel(10)
+	grid.lines = {}
+	grid:Hide()
+	Internal.gridFrame = grid
+	return grid
+end
+
+local function clearNativeGridLines(grid)
+	for _, line in ipairs(grid.lines) do
+		line:Hide()
+	end
+end
+
+local function acquireNativeGridLine(grid)
+	for _, line in ipairs(grid.lines) do
+		if not line:IsShown() then
+			line:Show()
+			return line
+		end
+	end
+	local line = grid:CreateTexture(nil, "ARTWORK")
+	line:SetColorTexture(0, 0, 0, 0.55)
+	table.insert(grid.lines, line)
+	return line
+end
+
+local function rebuildNativeGrid()
+	local grid = ensureNativeGridFrame()
+	local gridSize = normalizePositive(Internal.gridSize, DEFAULT_NATIVE_GRID_SIZE)
+	local width = UIParent:GetWidth() or 0
+	local height = UIParent:GetHeight() or 0
+	if width <= 0 or height <= 0 or gridSize <= 0 then
+		return
+	end
+
+	grid:SetAllPoints(UIParent)
+	clearNativeGridLines(grid)
+
+	local centerX = width * 0.5
+	local centerY = height * 0.5
+	local stepX = width / gridSize
+	local stepY = height / gridSize
+
+	for i = 0, gridSize do
+		local x = i * stepX
+		local vertical = acquireNativeGridLine(grid)
+		vertical:SetWidth(1)
+		vertical:SetHeight(height)
+		vertical:ClearAllPoints()
+		vertical:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x, 0)
+		if math.abs(x - centerX) <= 0.5 then
+			vertical:SetColorTexture(1, 0, 0, 0.75)
+		else
+			vertical:SetColorTexture(0, 0, 0, 0.55)
+		end
+	end
+
+	for i = 0, gridSize do
+		local y = i * stepY
+		local horizontal = acquireNativeGridLine(grid)
+		horizontal:SetWidth(width)
+		horizontal:SetHeight(1)
+		horizontal:ClearAllPoints()
+		horizontal:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, y)
+		if math.abs(y - centerY) <= 0.5 then
+			horizontal:SetColorTexture(1, 0, 0, 0.75)
+		else
+			horizontal:SetColorTexture(0, 0, 0, 0.55)
+		end
+	end
+end
+
+function Internal:UpdateGridVisibility()
+	if not self.gridEnabled then
+		if self.gridFrame then
+			self.gridFrame:Hide()
+		end
+		return
+	end
+	rebuildNativeGrid()
+	if self.gridFrame then
+		self.gridFrame:SetShown(lib.isEditing)
+	end
+end
+
+local SNAP_GUIDE_THICKNESS = 2
+local SNAP_GUIDE_COLOR_R, SNAP_GUIDE_COLOR_G, SNAP_GUIDE_COLOR_B, SNAP_GUIDE_COLOR_A = 1.0, 0.82, 0.1, 0.92
+local SNAP_GUIDE_UPDATE_INTERVAL = 0.016
+
+local function ensureNativeSnapGuideFrame()
+	if Internal.snapGuideFrame then
+		return Internal.snapGuideFrame
+	end
+
+	local guide = CreateFrame("Frame", "LibEQOLNativeEditModeSnapGuide", UIParent)
+	guide:SetAllPoints(UIParent)
+	guide:SetFrameStrata("TOOLTIP")
+	guide:SetFrameLevel(400)
+	guide:EnableMouse(false)
+
+	local vertical = guide:CreateTexture(nil, "OVERLAY")
+	vertical:SetColorTexture(SNAP_GUIDE_COLOR_R, SNAP_GUIDE_COLOR_G, SNAP_GUIDE_COLOR_B, SNAP_GUIDE_COLOR_A)
+	vertical:Hide()
+	guide.vertical = vertical
+
+	local horizontal = guide:CreateTexture(nil, "OVERLAY")
+	horizontal:SetColorTexture(SNAP_GUIDE_COLOR_R, SNAP_GUIDE_COLOR_G, SNAP_GUIDE_COLOR_B, SNAP_GUIDE_COLOR_A)
+	horizontal:Hide()
+	guide.horizontal = horizontal
+
+	guide:Hide()
+	Internal.snapGuideFrame = guide
+	return guide
+end
+
+local function hideNativeSnapGuides()
+	local guide = Internal.snapGuideFrame
+	if not guide then
+		return
+	end
+	if guide.vertical then
+		guide.vertical:Hide()
+	end
+	if guide.horizontal then
+		guide.horizontal:Hide()
+	end
+	guide:Hide()
+end
+
+Internal.HideSnapGuides = hideNativeSnapGuides
+
+local function showNativeSnapGuides(lineX, lineY)
+	if not lib.isEditing then
+		hideNativeSnapGuides()
+		return
+	end
+	if lineX == nil and lineY == nil then
+		hideNativeSnapGuides()
+		return
+	end
+
+	local guide = ensureNativeSnapGuideFrame()
+	guide:SetAllPoints(UIParent)
+	local width = UIParent:GetWidth() or 0
+	local height = UIParent:GetHeight() or 0
+	local shown = false
+
+	if lineX ~= nil and height > 0 then
+		local vertical = guide.vertical
+		vertical:SetWidth(SNAP_GUIDE_THICKNESS)
+		vertical:SetHeight(height)
+		vertical:ClearAllPoints()
+		vertical:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", lineX - (SNAP_GUIDE_THICKNESS * 0.5), 0)
+		vertical:Show()
+		shown = true
+	elseif guide.vertical then
+		guide.vertical:Hide()
+	end
+
+	if lineY ~= nil and width > 0 then
+		local horizontal = guide.horizontal
+		horizontal:SetWidth(width)
+		horizontal:SetHeight(SNAP_GUIDE_THICKNESS)
+		horizontal:ClearAllPoints()
+		horizontal:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, lineY - (SNAP_GUIDE_THICKNESS * 0.5))
+		horizontal:Show()
+		shown = true
+	elseif guide.horizontal then
+		guide.horizontal:Hide()
+	end
+
+	guide:SetShown(shown)
+end
+
+local function getSnapLineCandidates(frame)
+	local verticalLines = {}
+	local horizontalLines = {}
+
+	local parentWidth = UIParent:GetWidth() or 0
+	local parentHeight = UIParent:GetHeight() or 0
+	verticalLines[#verticalLines + 1] = 0
+	verticalLines[#verticalLines + 1] = parentWidth * 0.5
+	verticalLines[#verticalLines + 1] = parentWidth
+	horizontalLines[#horizontalLines + 1] = 0
+	horizontalLines[#horizontalLines + 1] = parentHeight * 0.5
+	horizontalLines[#horizontalLines + 1] = parentHeight
+
+	if Internal.gridEnabled then
+		local gridSize = normalizePositive(Internal.gridSize, DEFAULT_NATIVE_GRID_SIZE)
+		local stepX = parentWidth / gridSize
+		local stepY = parentHeight / gridSize
+		for i = 0, gridSize do
+			verticalLines[#verticalLines + 1] = i * stepX
+			horizontalLines[#horizontalLines + 1] = i * stepY
+		end
+	end
+
+	for other, otherSelection in pairs(State.selectionRegistry) do
+		local canUse = false
+		if other ~= frame then
+			if other and other.IsVisible and other:IsVisible() then
+				canUse = true
+			elseif otherSelection and otherSelection.IsVisible and otherSelection:IsVisible() then
+				canUse = true
+			end
+		end
+		if canUse then
+			local left, right, top, bottom = other:GetLeft(), other:GetRight(), other:GetTop(), other:GetBottom()
+			if left and right and top and bottom then
+				verticalLines[#verticalLines + 1] = left
+				verticalLines[#verticalLines + 1] = right
+				verticalLines[#verticalLines + 1] = (left + right) * 0.5
+				horizontalLines[#horizontalLines + 1] = bottom
+				horizontalLines[#horizontalLines + 1] = top
+				horizontalLines[#horizontalLines + 1] = (bottom + top) * 0.5
+			end
+		end
+	end
+
+	return verticalLines, horizontalLines
+end
+
+local function computeSnapDelta(frame)
+	local left, right, top, bottom = frame:GetLeft(), frame:GetRight(), frame:GetTop(), frame:GetBottom()
+	if not (left and right and top and bottom) then
+		return 0, 0
+	end
+
+	local centerX = (left + right) * 0.5
+	local centerY = (bottom + top) * 0.5
+	local verticalLines, horizontalLines = getSnapLineCandidates(frame)
+	local range = normalizePositive(Internal.snapRange, DEFAULT_NATIVE_SNAP_RANGE)
+
+	local bestDX = 0
+	local bestDY = 0
+	local bestXDistance = range + 0.001
+	local bestYDistance = range + 0.001
+	local bestXLine
+	local bestYLine
+
+	for _, line in ipairs(verticalLines) do
+		local diffLeft = line - left
+		local absLeft = math.abs(diffLeft)
+		if absLeft < bestXDistance and absLeft <= range then
+			bestXDistance = absLeft
+			bestDX = diffLeft
+			bestXLine = line
+		end
+
+		local diffRight = line - right
+		local absRight = math.abs(diffRight)
+		if absRight < bestXDistance and absRight <= range then
+			bestXDistance = absRight
+			bestDX = diffRight
+			bestXLine = line
+		end
+
+		local diffCenter = line - centerX
+		local absCenter = math.abs(diffCenter)
+		if absCenter < bestXDistance and absCenter <= range then
+			bestXDistance = absCenter
+			bestDX = diffCenter
+			bestXLine = line
+		end
+	end
+
+	for _, line in ipairs(horizontalLines) do
+		local diffBottom = line - bottom
+		local absBottom = math.abs(diffBottom)
+		if absBottom < bestYDistance and absBottom <= range then
+			bestYDistance = absBottom
+			bestDY = diffBottom
+			bestYLine = line
+		end
+
+		local diffTop = line - top
+		local absTop = math.abs(diffTop)
+		if absTop < bestYDistance and absTop <= range then
+			bestYDistance = absTop
+			bestDY = diffTop
+			bestYLine = line
+		end
+
+		local diffCenter = line - centerY
+		local absCenter = math.abs(diffCenter)
+		if absCenter < bestYDistance and absCenter <= range then
+			bestYDistance = absCenter
+			bestDY = diffCenter
+			bestYLine = line
+		end
+	end
+
+	return bestDX, bestDY, bestXLine, bestYLine
+end
+
+local function applyNativeMagnetism(frame)
+	local dx, dy = computeSnapDelta(frame)
+	if math.abs(dx) < 0.001 and math.abs(dy) < 0.001 then
+		return
+	end
+	local point, relativeTo, relativePoint, x, y = frame:GetPoint(1)
+	if not point then
+		point, relativePoint, x, y = "CENTER", "CENTER", 0, 0
+	end
+	local scale = frame:GetScale() or 1
+	frame:ClearAllPoints()
+	frame:SetPoint(point, relativeTo or UIParent, relativePoint or point, (x or 0) + (dx / scale), (y or 0) + (dy / scale))
+end
+
+local function updateNativeSnapGuides(frame)
+	if not frame or not lib.isEditing or not Internal.snapEnabled then
+		hideNativeSnapGuides()
+		return
+	end
+	local _, _, snapLineX, snapLineY = computeSnapDelta(frame)
+	showNativeSnapGuides(snapLineX, snapLineY)
+end
+
+EditModeMagnetismManager = EditModeMagnetismManager or {}
+function EditModeMagnetismManager:ApplyMagnetism(systemFrame)
+	applyNativeMagnetism(systemFrame)
+end
+
 local function setPropagateKeyboardInputSafe(frame, propagate)
 	if not frame or not frame.SetPropagateKeyboardInput or isInCombat() or not lib.isEditing then
 		return
@@ -4107,6 +4668,7 @@ local function adjustPosition(frame, dx, dy)
 end
 
 local function resetSelectionIndicators(force)
+	hideNativeSnapGuides()
 	if not force and not lib.isEditing then
 		return
 	end
@@ -4117,6 +4679,7 @@ local function resetSelectionIndicators(force)
 		if selection.isSelected then
 			frame:SetMovable(false)
 		end
+		syncSelectionLayer(selection)
 		local keepHidden = selection.overlayHidden
 		if not lib.isEditing then
 			keepHidden = false
@@ -4151,13 +4714,31 @@ local function beginSelectionDrag(self)
 		return
 	end
 	self.parent:StartMoving()
-	if EditModeMagnetismManager and EditModeManagerFrame and EditModeManagerFrame.SetSnapPreviewFrame then
+	updateNativeSnapGuides(self.parent)
+	if not self._eqolNativeSnapGuideOnUpdate then
+		self._eqolNativeSnapGuideOnUpdate = function(selectionFrame, elapsed)
+			selectionFrame._eqolNativeSnapGuideElapsed = (selectionFrame._eqolNativeSnapGuideElapsed or 0) + (elapsed or 0)
+			if selectionFrame._eqolNativeSnapGuideElapsed < SNAP_GUIDE_UPDATE_INTERVAL then
+				return
+			end
+			selectionFrame._eqolNativeSnapGuideElapsed = 0
+			updateNativeSnapGuides(selectionFrame.parent)
+		end
+	end
+	self._eqolNativeSnapGuideElapsed = 0
+	self:SetScript("OnUpdate", self._eqolNativeSnapGuideOnUpdate)
+	if Internal.UpdateGridVisibility then
+		Internal:UpdateGridVisibility()
+	end
+	if EditModeManagerFrame and EditModeManagerFrame.SetSnapPreviewFrame then
 		EditModeManagerFrame:SetSnapPreviewFrame(self.parent)
 	end
 end
 
 local function finishSelectionDrag(self)
 	local parent = self.parent
+	self:SetScript("OnUpdate", nil)
+	hideNativeSnapGuides()
 	parent:StopMovingOrSizing()
 	if EditModeManagerFrame and EditModeManagerFrame.ClearSnapPreviewFrame then
 		EditModeManagerFrame:ClearSnapPreviewFrame()
@@ -4168,12 +4749,7 @@ local function finishSelectionDrag(self)
 	if not isDragAllowed(parent) then
 		return
 	end
-	if
-		EditModeManagerFrame
-		and EditModeManagerFrame.IsSnapEnabled
-		and EditModeManagerFrame:IsSnapEnabled()
-		and EditModeMagnetismManager
-	then
+	if EditModeManagerFrame and EditModeManagerFrame.IsSnapEnabled and EditModeManagerFrame:IsSnapEnabled() then
 		EditModeMagnetismManager:ApplyMagnetism(parent)
 	end
 	local point, x, y = deriveAnchorAndOffset(parent)
@@ -4367,9 +4943,11 @@ overlapGlobalFrame:RegisterEvent("GLOBAL_MOUSE_DOWN")
 overlapGlobalFrame:SetScript("OnEvent", overlapGlobalMouseDown)
 
 local function onEditModeEnter()
+	hideNativeSnapGuides()
 	updateActiveLayoutFromAPI()
 	restoreManagerExtraFrames(true)
 	lib.isEditing = true
+	Internal:UpdateGridVisibility()
 	resetSelectionIndicators()
 	Internal:RefreshManagerTogglePanel()
 	for _, callback in next, lib.eventHandlersEnter do
@@ -4378,7 +4956,9 @@ local function onEditModeEnter()
 end
 
 local function onEditModeExit()
+	hideNativeSnapGuides()
 	lib.isEditing = false
+	Internal:UpdateGridVisibility()
 	resetSelectionIndicators(true)
 	hideOverlapMenu()
 	updateManagerEyeButton()
@@ -4399,7 +4979,21 @@ lib.eventHandlersLayoutDuplicate = lib.eventHandlersLayoutDuplicate or {}
 
 -- API ------------------------------------------------------------------------------
 function lib:AddFrame(frame, callback, default)
-	local selection = CreateFrame("Frame", nil, frame, "EditModeSystemSelectionTemplate")
+	frame = resolveFrame(frame)
+	if not frame or not frame.GetObjectType then
+		if UIErrorsFrame and UIErrorsFrame.AddMessage then
+			UIErrorsFrame:AddMessage(
+				"LibEQOLNativeEditMode: AddFrame called with invalid frame (nil or unresolved).",
+				1,
+				0.2,
+				0.2,
+				1
+			)
+		end
+		return false
+	end
+
+	local selection = Internal:CreateNativeSelection(frame)
 	selection:SetAllPoints()
 	selection:SetScript("OnMouseDown", handleSelectionMouseDown)
 	selection:SetScript("OnDragStart", beginSelectionDrag)
@@ -4411,7 +5005,8 @@ function lib:AddFrame(frame, callback, default)
 		if not isDragAllowed(selectionFrame.parent) then
 			return
 		end
-		local step = IsShiftKeyDown() and 10 or 1
+		local step = IsShiftKeyDown() and (Internal.nudgeShiftStep or DEFAULT_NATIVE_NUDGE_SHIFT_STEP)
+			or (Internal.nudgeStep or DEFAULT_NATIVE_NUDGE_STEP)
 		if key == "UP" then
 			setPropagateKeyboardInputSafe(selectionFrame, false)
 			adjustPosition(selectionFrame.parent, 0, step)
@@ -4450,17 +5045,16 @@ function lib:AddFrame(frame, callback, default)
 			State.dragPredicates[frame] = (default.allowDrag ~= nil) and default.allowDrag or default.dragEnabled
 		end
 	end
-	if select(4, GetBuildInfo()) >= 110200 then
-		selection.systemBaseName = frame.editModeName or frame:GetName()
-		selection.system = {}
-		selection.system.GetSystemName = function()
-			if selection.labelHidden then
-				return ""
-			end
-			return selection.systemBaseName
+	selection.systemBaseName = frame.editModeName or frame:GetName()
+	selection.system = {}
+	selection.system.GetSystemName = function()
+		if selection.labelHidden then
+			return ""
 		end
-	else
-		selection.Label:SetText(frame.editModeName or frame:GetName())
+		return selection.systemBaseName
+	end
+	if selection.Label then
+		selection.Label:SetText(selection.systemBaseName)
 	end
 
 	State.selectionRegistry[frame] = selection
@@ -4536,6 +5130,14 @@ function lib:AddFrame(frame, callback, default)
 			resetSelectionIndicators()
 		end)
 		applyDialogPosition(Internal.dialog)
+		EditModeManagerFrame = Internal:EnsureManagerFrame()
+		if EditModeManagerFrame then
+			if not EditModeManagerFrame._eqolNativeHooksBound then
+				EditModeManagerFrame:HookScript("OnShow", onEditModeEnter)
+				EditModeManagerFrame:HookScript("OnHide", onEditModeExit)
+				EditModeManagerFrame._eqolNativeHooksBound = true
+			end
+		end
 
 		local combatWatcher = CreateFrame("Frame")
 		combatWatcher:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -4562,14 +5164,7 @@ function lib:AddFrame(frame, callback, default)
 				Layout:HandleLayoutsChanged(nil, C_EditMode.GetLayouts())
 			end
 		end)
-
-		EditModeManagerFrame:HookScript("OnShow", onEditModeEnter)
-		EditModeManagerFrame:HookScript("OnHide", onEditModeExit)
 		ensureManagerEyeButton()
-
-		hooksecurefunc(EditModeManagerFrame, "SelectSystem", function()
-			resetSelectionIndicators()
-		end)
 		if C_EditMode then
 			if C_EditMode.OnLayoutDeleted then
 				hooksecurefunc(C_EditMode, "OnLayoutDeleted", function(deletedLayoutIndex)
@@ -4716,6 +5311,78 @@ function lib:SetFrameOverlayToggleEnabled(frame, enabled)
 		updateSelectionVisuals(selection, false)
 	end
 	updateManagerEyeButton()
+end
+
+function lib:EnterEditMode()
+	if isInCombat() then
+		return false
+	end
+	local manager = Internal:EnsureManagerFrame()
+	if not manager then
+		return false
+	end
+	if not manager:IsShown() then
+		if not manager._eqolNativeHooksBound then
+			manager:HookScript("OnShow", onEditModeEnter)
+			manager:HookScript("OnHide", onEditModeExit)
+			manager._eqolNativeHooksBound = true
+		end
+		manager:Show()
+	end
+	return true
+end
+
+function lib:ExitEditMode()
+	if EditModeManagerFrame and EditModeManagerFrame:IsShown() then
+		EditModeManagerFrame:Hide()
+		return true
+	end
+	return false
+end
+
+function lib:ToggleEditMode()
+	if lib:IsInEditMode() then
+		return lib:ExitEditMode()
+	end
+	return lib:EnterEditMode()
+end
+
+function lib:SetSnapEnabled(enabled)
+	Internal.snapEnabled = not not enabled
+	if EditModeManagerFrame and EditModeManagerFrame.EnableSnapCheckButton then
+		EditModeManagerFrame.EnableSnapCheckButton:SetChecked(Internal.snapEnabled)
+	end
+	if not Internal.snapEnabled and Internal.HideSnapGuides then
+		Internal:HideSnapGuides()
+	end
+end
+
+function lib:GetSnapEnabled()
+	return Internal.snapEnabled and true or false
+end
+
+function lib:SetGridEnabled(enabled)
+	Internal.gridEnabled = not not enabled
+	if EditModeManagerFrame and EditModeManagerFrame.GridCheckButton then
+		EditModeManagerFrame.GridCheckButton:SetChecked(Internal.gridEnabled)
+	end
+	Internal:UpdateGridVisibility()
+end
+
+function lib:GetGridEnabled()
+	return Internal.gridEnabled and true or false
+end
+
+function lib:SetGridSize(size)
+	Internal.gridSize = normalizePositive(size, DEFAULT_NATIVE_GRID_SIZE)
+	if EditModeManagerFrame and EditModeManagerFrame.GridSizeInput then
+		EditModeManagerFrame.GridSizeInput:SetText(tostring(Internal.gridSize))
+	end
+	Internal:UpdateGridVisibility()
+end
+
+function lib:GetGridSize()
+	return normalizePositive(Internal.gridSize, DEFAULT_NATIVE_GRID_SIZE)
 end
 
 function lib:RegisterCallback(event, callback)

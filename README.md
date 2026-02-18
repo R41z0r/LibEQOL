@@ -1,6 +1,6 @@
 # LibEQOL
 
-Quality-of-life toolkit for WoW addons. Today it ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (selection overlays, dialogs, widgets) and the Settings helper sublib `LibEQOLSettingsMode-1.0` (helpers for Blizzard Settings UI). `LibEQOL-1.0` remains a backward-compatible alias to the Edit Mode sublib for existing users.
+Quality-of-life toolkit for WoW addons. It ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (Blizzard Edit Mode integration), the optional native helper sublib `LibEQOLNativeEditMode-1.0` (own manager/selection/snap/grid flow), and the Settings helper sublib `LibEQOLSettingsMode-1.0` (helpers for Blizzard Settings UI). `LibEQOL-1.0` remains a backward-compatible alias to `LibEQOLEditMode-1.0`.
 
 Full docs live at: https://github.com/R41z0r/LibEQOL/wiki
 
@@ -15,6 +15,10 @@ Full docs live at: https://github.com/R41z0r/LibEQOL/wiki
 - **Embedded:** Place the folder in `libs/` and include `LibEQOL.xml` in your TOC:
   ```
   <Include file="libs/LibEQOL/LibEQOL.xml" />
+  ```
+- **Optional native edit mode:** Keep the default include above unchanged and add this only if you want the native mode:
+  ```
+  <Include file="libs/LibEQOL/LibEQOLNativeEditMode.xml" />
   ```
 - **Packaging (BigWigs packager):** Do **not** list LibEQOL as an External; it can bleed into other addons and create XML/template conflicts. Vendor it explicitly (e.g. with the GitHub Action below) into your `libs/` directory instead.
 
@@ -34,8 +38,8 @@ Optional inputs: `repo` (defaults to this repo) and `github-token` (defaults to 
 ## Architecture
 
 - Single-file design with explicit layers: state tracker, pool manager, widget builders, dialog controller, and selection handling.
-- Modules under `LibEQOL`: **LibEQOLEditMode** (shipping) and **LibEQOLSettingsMode** (shipping) share the core helpers while exposing separate APIs.
-- Umbrella entry (`LibEQOL.lua`) surfaces sublibs on `_G.LibEQOL` (`EditMode` is loaded by default; future modules attach alongside).
+- Modules under `LibEQOL`: **LibEQOLEditMode** (shipping), **LibEQOLNativeEditMode** (optional), and **LibEQOLSettingsMode** (shipping) share core helpers while exposing separate APIs.
+- Umbrella entry (`LibEQOL.lua`) surfaces sublibs on `_G.LibEQOL` (`EditMode` and `SettingsMode` load with `LibEQOL.xml`; `NativeEditMode` resolves when `LibEQOLNativeEditMode.xml` is additionally loaded).
 - All widgets are built on-demand from our factories; no embedded Blizzard UI copies or borrowed layout code.
 - Public API for Edit Mode (`AddFrame`, `AddFrameSettings`, `AddFrameSettingsButton`, callbacks, `SettingType`, etc.) stays stable for drop-in compatibility.
 
@@ -98,6 +102,7 @@ end)
 ## API quick reference
 
 - `AddFrame(frame, callback, defaultPosition)` – register a frame for Edit Mode. `callback(frame, layoutName, point, x, y)` fires on move/reset; anchors stay relative to the frame’s current parent (or existing relative frame when nudging) and `defaultPosition` defaults to `{ point = "CENTER", x = 0, y = 0 }` relative to the parent. Opt-in overlay/label toggle via `defaultPosition.enableOverlayToggle = true` (or `overlayToggleEnabled = true`).
+- Native-only control API (`LibEQOLNativeEditMode-1.0`): `EnterEditMode()`, `ExitEditMode()`, `ToggleEditMode()`, `SetSnapEnabled(enabled)`, `GetSnapEnabled()`, `SetGridEnabled(enabled)`, `GetGridEnabled()`, `SetGridSize(size)`, `GetGridSize()`.
 - Reset button: sets settings back to their `default` (and `colorDefault` where applicable); settings without defaults are skipped.
 - `AddFrameSettings(frame, settingsTable)` – supply rows for the settings dialog. See **Setting rows**.
 - `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler) using the built-in Edit Mode extra button style.
@@ -118,7 +123,7 @@ end)
 - `GetFrameDefaultPosition(frame)` – retrieve the default position for a registered frame.
 - `lib.internal:RefreshSettings()` – re-evaluate `isEnabled`/`disabled` predicates on visible rows.
 
-Example: `examples/EditModeExamples.lua` (https://raw.githubusercontent.com/R41z0r/LibEQOL/main/examples/EditModeExamples.lua) includes an "Overlay Toggle" frame showing how to opt into the eye-button via `enableOverlayToggle = true`. Also see `docs/overlay-toggle-example.lua`. GIF: https://raw.githubusercontent.com/wiki/R41z0r/LibEQOL/assets/widgets/frames/example-hideoverlay.gif
+Example: `examples/EditModeExamples.lua` (https://raw.githubusercontent.com/R41z0r/LibEQOL/main/examples/EditModeExamples.lua) includes an "Overlay Toggle" frame showing how to opt into the eye-button via `enableOverlayToggle = true`. Native example: `examples/NativeEditModeExamples.lua` (`/eqolnative` to toggle). Also see `docs/overlay-toggle-example.lua`. GIF: https://raw.githubusercontent.com/wiki/R41z0r/LibEQOL/assets/widgets/frames/example-hideoverlay.gif
 
 ## Setting rows (schema + examples)
 
