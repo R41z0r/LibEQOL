@@ -1,6 +1,6 @@
 # LibEQOL
 
-Quality-of-life toolkit for WoW addons. It ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (Blizzard Edit Mode integration), the optional native helper sublib `LibEQOLNativeEditMode-1.0` (own manager/selection/snap/grid flow), and the Settings helper sublib `LibEQOLSettingsMode-1.0` (helpers for Blizzard Settings UI). `LibEQOL-1.0` remains a backward-compatible alias to `LibEQOLEditMode-1.0`.
+Quality-of-life toolkit for WoW addons. It ships the Edit Mode helper sublib `LibEQOLEditMode-1.0` (Blizzard Edit Mode integration), the optional native helper sublib `LibEQOLNativeEditMode-1.0` (own manager/selection/snap/grid flow), the Settings helper sublib `LibEQOLSettingsMode-1.0` (helpers for Blizzard Settings UI), and the optional debug helper sublib `LibEQOLDebugMode-1.0` (on-demand timeline/session bug reports). `LibEQOL-1.0` remains a backward-compatible alias to `LibEQOLEditMode-1.0`.
 
 Full docs live at: https://github.com/R41z0r/LibEQOL/wiki
 
@@ -20,6 +20,10 @@ Full docs live at: https://github.com/R41z0r/LibEQOL/wiki
   ```
   <Include file="libs/LibEQOL/LibEQOLNativeEditMode.xml" />
   ```
+- **Optional debug mode:** Keep the default include above unchanged and add this only if you want the debug/bugreport module:
+  ```
+  <Include file="libs/LibEQOL/LibEQOLDebugMode.xml" />
+  ```
 - **Packaging (BigWigs packager):** Do **not** list LibEQOL as an External; it can bleed into other addons and create XML/template conflicts. Vendor it explicitly (e.g. with the GitHub Action below) into your `libs/` directory instead.
 
 ## GitHub Action helper
@@ -38,8 +42,8 @@ Optional inputs: `repo` (defaults to this repo) and `github-token` (defaults to 
 ## Architecture
 
 - Single-file design with explicit layers: state tracker, pool manager, widget builders, dialog controller, and selection handling.
-- Modules under `LibEQOL`: **LibEQOLEditMode** (shipping), **LibEQOLNativeEditMode** (optional), and **LibEQOLSettingsMode** (shipping) share core helpers while exposing separate APIs.
-- Umbrella entry (`LibEQOL.lua`) surfaces sublibs on `_G.LibEQOL` (`EditMode` and `SettingsMode` load with `LibEQOL.xml`; `NativeEditMode` resolves when `LibEQOLNativeEditMode.xml` is additionally loaded).
+- Modules under `LibEQOL`: **LibEQOLEditMode** (shipping), **LibEQOLNativeEditMode** (optional), **LibEQOLSettingsMode** (shipping), and **LibEQOLDebugMode** (optional) share core helpers while exposing separate APIs.
+- Umbrella entry (`LibEQOL.lua`) surfaces sublibs on `_G.LibEQOL` (`EditMode` and `SettingsMode` load with `LibEQOL.xml`; `NativeEditMode`/`DebugMode` resolve when their extra XML files are additionally loaded).
 - All widgets are built on-demand from our factories; no embedded Blizzard UI copies or borrowed layout code.
 - Public API for Edit Mode (`AddFrame`, `AddFrameSettings`, `AddFrameSettingsButton`, callbacks, `SettingType`, etc.) stays stable for drop-in compatibility.
 
@@ -122,6 +126,7 @@ end)
 - `GetLayouts()` – returns an array of `{ index, name, layoutType, isActive }` for UI indices (1/2 use `LAYOUT_STYLE_MODERN` / `LAYOUT_STYLE_CLASSIC` and `Enum.EditModeLayoutType.Modern` / `Enum.EditModeLayoutType.Classic` when available); `isActive` is `1` for the active layout, else `0`.
 - `GetFrameDefaultPosition(frame)` – retrieve the default position for a registered frame.
 - `lib.internal:RefreshSettings()` – re-evaluate `isEnabled`/`disabled` predicates on visible rows.
+- Debug mode (`LibEQOLDebugMode-1.0`) – opt-in session capture with explicit `StartSession`/`StopSession`; supports tiers (`off`/`basic`/`deep`), manual traces/errors/spans, optional SavedVariables persistence (`savedRoot` + `path`), and report export via `BuildReport()`.
 
 Example: `examples/EditModeExamples.lua` (https://raw.githubusercontent.com/R41z0r/LibEQOL/main/examples/EditModeExamples.lua) includes an "Overlay Toggle" frame showing how to opt into the eye-button via `enableOverlayToggle = true`. Native example: `examples/NativeEditModeExamples.lua` (`/eqolnative` to toggle). Also see `docs/overlay-toggle-example.lua`. GIF: https://raw.githubusercontent.com/wiki/R41z0r/LibEQOL/assets/widgets/frames/example-hideoverlay.gif
 

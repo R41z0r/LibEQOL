@@ -8,6 +8,7 @@ local GLOBAL_NAME = "LibEQOL"
 local EditModeMajor = "LibEQOLEditMode-1.0"
 local NativeEditModeMajor = "LibEQOLNativeEditMode-1.0"
 local SettingsModeMajor = "LibEQOLSettingsMode-1.0"
+local DebugModeMajor = "LibEQOLDebugMode-1.0"
 
 local umbrella = _G[GLOBAL_NAME] or {}
 _G[GLOBAL_NAME] = umbrella
@@ -19,6 +20,7 @@ end
 bindModule("EditMode", EditModeMajor)
 bindModule("NativeEditMode", NativeEditModeMajor)
 bindModule("SettingsMode", SettingsModeMajor)
+bindModule("DebugMode", DebugModeMajor)
 
 function umbrella.GetModule(_, name)
 	if name == "EditMode" then
@@ -27,6 +29,8 @@ function umbrella.GetModule(_, name)
 		return LibStub:GetLibrary(NativeEditModeMajor, true)
 	elseif name == "SettingsMode" then
 		return LibStub:GetLibrary(SettingsModeMajor, true)
+	elseif name == "DebugMode" then
+		return LibStub:GetLibrary(DebugModeMajor, true)
 	end
 	return nil
 end

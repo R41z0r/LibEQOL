@@ -701,8 +701,10 @@ local function updateOverlayVisibility(selection, hidden)
 	end
 	selection.overlayHidden = not not hidden
 	selection.overlayAlphas = selection.overlayAlphas or {}
-	for _, region in ipairs({ selection:GetRegions() }) do
-		if region.GetObjectType and region:GetObjectType() == "Texture" then
+	local numRegions = selection.GetNumRegions and selection:GetNumRegions() or 0
+	for i = 1, numRegions do
+		local region = select(i, selection:GetRegions())
+		if region and region.GetObjectType and region:GetObjectType() == "Texture" then
 			if hidden then
 				if selection.overlayAlphas[region] == nil then
 					selection.overlayAlphas[region] = region:GetAlpha() or 1
@@ -4367,7 +4369,10 @@ overlapGlobalFrame:RegisterEvent("GLOBAL_MOUSE_DOWN")
 overlapGlobalFrame:SetScript("OnEvent", overlapGlobalMouseDown)
 
 local function onEditModeEnter()
-	updateActiveLayoutFromAPI()
+	-- GetLayouts is allocation-heavy; only refresh when cache is missing.
+	if not lib.activeLayoutIndex or not State.layoutSnapshot then
+		updateActiveLayoutFromAPI()
+	end
 	restoreManagerExtraFrames(true)
 	lib.isEditing = true
 	resetSelectionIndicators()

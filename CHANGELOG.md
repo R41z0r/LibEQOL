@@ -1,5 +1,27 @@
 # Changelog
 
+## [18] - 2026-02-21
+
+Added:
+
+- EditMode: New optional sublib `LibEQOLNativeEditMode-1.0` for native manager/selection/snap/grid edit workflows.
+- Examples: Added native mode usage examples in `examples/NativeEditModeExamples.lua`.
+- Debug: New optional sublib `LibEQOLDebugMode-1.0` for explicit session-based addon debugging and bug-report workflows.
+- Debug: New APIs for tenancy and activation gates (`RegisterAddon`, `StartSession`, `StopSession`, tier controls, and active-session queries).
+- Debug: Timeline capture surface (`Trace`, `CaptureError`, `BeginSpan`, `EndSpan`, `Wrap`) with strict no-op behavior unless a session is active.
+- Debug: Structured export (`GetTimeline`, `BuildReport`) including hierarchical deep-mode span trees and copy-ready text reports.
+- Debug: Optional SavedVariables persistence with caller-provided `savedRoot` + `path`, plus ring-buffer limits (`maxEventsPerSession`, `maxSessions`, `maxPayloadBytes`, `maxSpanDepth`).
+- Docs/Examples: Added Debug Mode docs pages and `examples/DebugModeExamples.lua`.
+- Core: Umbrella module now exposes `NativeEditMode` via `_G.LibEQOL.NativeEditMode` and `LibEQOL:GetModule("NativeEditMode")`.
+- Core: Umbrella module now exposes `DebugMode` via `_G.LibEQOL.DebugMode` and `LibEQOL:GetModule("DebugMode")`.
+- Packaging: `LibEQOL.toc` now includes `LibEQOLDebugMode.xml` for standalone installs (embedding remains opt-in via explicit include).
+- Packaging: Added vendored `libs/LibNicknameShare/LibNicknameShare.lua`.
+
+Optimized:
+
+- EditMode/NativeEditMode: `onEditModeEnter` now refreshes active layout data only when `activeLayoutIndex` or `layoutSnapshot` cache is missing.
+- EditMode/NativeEditMode: Overlay visibility toggles now avoid per-call temporary table allocations while iterating selection regions.
+
 ## [17] - 2026-02-09
 
 Optimized:
