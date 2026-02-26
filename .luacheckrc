@@ -80,20 +80,30 @@ globals = {
 	"InputScrollFrame_SetInstructions",
 	"PlaySoundFile",
 	"hooksecurefunc",
-		"LibEQOL_ColorOverridesMixin",
-		"LibEQOL_MultiDropdownMixin",
-		"LibEQOL_ScrollDropdownMixin",
-		"LibEQOL_SoundDropdownMixin",
-		"LibEQOL_InputControlMixin",
-		"GRAY_FONT_COLOR",
-		"CreateColor",
-	}
+	"LibEQOL_ColorOverridesMixin",
+	"LibEQOL_MultiDropdownMixin",
+	"LibEQOL_ScrollDropdownMixin",
+	"LibEQOL_SoundDropdownMixin",
+	"LibEQOL_InputControlMixin",
+	"GRAY_FONT_COLOR",
+	"CreateColor",
+	"SlashCmdList",
+	"SLASH_LIBEQOLDEBUGEXAMPLE1",
+	"SLASH_LIBEQOLNATIVE1",
+	"LibEQOLDebugExampleDB",
+}
 
 files = {
 	["libs/LibStub/LibStub.lua"] = {
 		max_line_length = false,
 		globals = {
 			"strmatch",
+		},
+	},
+	["libs/LibNicknameShare/LibNicknameShare.lua"] = {
+		ignore = {
+			"113", -- WoW API globals are resolved at runtime
+			"321", -- vendor closure ordering uses forward locals
 		},
 	},
 }

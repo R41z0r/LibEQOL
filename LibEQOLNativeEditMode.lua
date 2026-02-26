@@ -359,7 +359,7 @@ local CreateMinimalSliderFormatter = _G.CreateMinimalSliderFormatter
 local GetBuildInfo = _G.GetBuildInfo
 local PlaySound = _G.PlaySound
 local math = _G.math
-local EditModeMagnetismManager
+local EditModeMagnetismManager = _G.EditModeMagnetismManager
 local tostring = _G.tostring
 local type = _G.type
 local pairs = _G.pairs
@@ -370,6 +370,7 @@ local table = _G.table
 local UIErrorsFrame = _G.UIErrorsFrame
 local HUD_EDIT_MODE_COLLAPSE_OPTIONS = _G.HUD_EDIT_MODE_COLLAPSE_OPTIONS
 local HUD_EDIT_MODE_EXPAND_OPTIONS = _G.HUD_EDIT_MODE_EXPAND_OPTIONS
+local HUD_EDIT_MODE_INSTRUCTIONS_CLICK_TO_EDIT = _G.HUD_EDIT_MODE_INSTRUCTIONS_CLICK_TO_EDIT
 
 local C_EditMode = _G.C_EditMode
 local C_EditMode_GetLayouts = C_EditMode and C_EditMode.GetLayouts
@@ -1187,7 +1188,7 @@ end
 
 local updateManagerEyeButton
 
-function Internal:EnsureManagerFrame()
+function Internal.EnsureManagerFrame()
 	if EditModeManagerFrame then
 		return EditModeManagerFrame
 	end
@@ -4188,7 +4189,7 @@ end
 -- Selection and movement -----------------------------------------------------------
 local Selection = {}
 
-function Internal:CreateNativeSelection(parent)
+function Internal.CreateNativeSelection(_, parent)
 	local parentFrame = parent or UIParent
 	local selection = CreateFrame("Button", nil, parentFrame, "BackdropTemplate")
 	selection.parent = parentFrame
@@ -4582,6 +4583,7 @@ local function updateNativeSnapGuides(frame)
 end
 
 EditModeMagnetismManager = EditModeMagnetismManager or {}
+_G.EditModeMagnetismManager = EditModeMagnetismManager
 function EditModeMagnetismManager:ApplyMagnetism(systemFrame)
 	applyNativeMagnetism(systemFrame)
 end

@@ -26,10 +26,10 @@ local tinsert = table.insert
 local tremove = table.remove
 local tconcat = table.concat
 local tsort = table.sort
-local tpack = table.pack or function(...)
+local tpack = function(...)
 	return { n = select("#", ...), ... }
 end
-local unpackValues = _G.unpack or table.unpack
+local unpackValues = _G.unpack
 local date = _G.date
 local tostringValue = tostring
 local tonumberValue = tonumber
