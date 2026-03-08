@@ -1,5 +1,13 @@
 # Changelog
 
+## [19] - 2026-03-08
+
+Added:
+
+- EditMode: New opt-in standalone settings dialog APIs (`ShowStandaloneSettingsDialog`, `HideStandaloneSettingsDialog`, `IsStandaloneSettingsDialogShown`) to reuse Edit Mode settings panels outside Blizzard Edit Mode without changing default behavior.
+- EditMode: Standalone dialog calls can reuse registered `AddFrameSettings` / `AddFrameSettingsButton` data or accept ad-hoc `settings`, `buttons`, and `defaultPosition` data for non-registered frames.
+- Docs: Added standalone settings dialog documentation and linked the new flow from the Edit Mode getting-started/API docs.
+
 ## [18] - 2026-02-21
 
 Added:
