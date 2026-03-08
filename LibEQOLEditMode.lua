@@ -3453,6 +3453,8 @@ local function buildDivider()
 	end
 end
 
+local getDialogFrame
+
 local function buildCollapsible()
 	return function()
 		local button = CreateFrame("Button", nil, UIParent, "UIMenuButtonStretchTemplate")
@@ -3641,7 +3643,7 @@ local function setResetVisibility(buttonsFrame, visible)
 	end
 end
 
-local function getDialogFrame(dialog)
+getDialogFrame = function(dialog)
 	if not dialog then
 		return nil
 	end
