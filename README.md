@@ -97,6 +97,7 @@ end)
 - Selection overlay and move handles that integrate with Blizzard Edit Mode selection/highlight.
 - Keyboard nudging (arrow keys, Shift for larger steps) and reset-to-default positioning.
 - Auto-built settings dialog with pooled widgets (checkbox, dropdown, multi dropdown, slider, color picker, checkbox+color, dropdown+color) and a built-in reset action.
+- The same settings dialog can also be spawned outside Edit Mode for a custom standalone config popup, but only when you opt in via the standalone API.
 - Optional max height for per-frame settings lists with automatic scrolling.
 - Per-frame action buttons plus automatic "Reset Position" button (can be hidden).
 - Optional checkbox panel under the Edit Mode manager for toggling your addon frames on/off.
@@ -110,6 +111,7 @@ end)
 - Reset button: sets settings back to their `default` (and `colorDefault` where applicable); settings without defaults are skipped.
 - `AddFrameSettings(frame, settingsTable)` – supply rows for the settings dialog. See **Setting rows**.
 - `AddFrameSettingsButton(frame, data)` – add a custom button (`text`, `click` handler) using the built-in Edit Mode extra button style.
+- `ShowStandaloneSettingsDialog(frame, options?)` / `HideStandaloneSettingsDialog(frame?)` / `IsStandaloneSettingsDialogShown(frame?)` – opt-in helpers to open, close, or query the shared settings dialog outside Edit Mode. Existing Edit Mode behavior stays unchanged unless you call them. Omit `options.settings` / `options.buttons` to reuse rows already registered for the frame; pass them directly to build a popup for an unregistered frame instead.
 - `SetFrameResetVisible(frame, showReset)` – hide or re-show the built-in "Reset Position" button.
 - `SetFrameSettingsResetVisible(frame, showReset)` – hide or re-show the settings "Reset to Default" button for that frame.
 - `SetFrameSettingsMaxHeight(frame, height)` – set a max height (in pixels) for the settings list only (button bar excluded); pass `nil` to clear the override.
