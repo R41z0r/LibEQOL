@@ -3455,6 +3455,8 @@ local function buildDivider()
 	end
 end
 
+local getDialogFrame
+
 local function buildCollapsible()
 	return function()
 		local button = CreateFrame("Button", nil, UIParent, "UIMenuButtonStretchTemplate")
@@ -3643,7 +3645,7 @@ local function setResetVisibility(buttonsFrame, visible)
 	end
 end
 
-local function getDialogFrame(dialog)
+function getDialogFrame(dialog)
 	if not dialog then
 		return nil
 	end
@@ -5112,14 +5114,15 @@ function Internal:GetFrameButtons(frame)
 end
 
 local function hasOpenDropdownMenu()
-	local menuManager = Menu and Menu.GetManager and Menu.GetManager()
+	local menuSystem = _G.Menu
+	local menuManager = menuSystem and menuSystem.GetManager and menuSystem.GetManager()
 	if menuManager and menuManager.GetOpenMenu then
 		local ok, openMenu = pcall(menuManager.GetOpenMenu, menuManager)
 		if ok and openMenu then
 			return true
 		end
 	end
-	return UIDROPDOWNMENU_OPEN_MENU ~= nil
+	return _G.UIDROPDOWNMENU_OPEN_MENU ~= nil
 end
 
 local function mergeRefreshSettingValueTargets(existing, incoming)
