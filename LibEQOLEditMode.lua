@@ -1,4 +1,4 @@
-local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 99000000
+local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 20000000
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 local C_Timer = _G.C_Timer
@@ -2397,7 +2397,9 @@ local function buildMultiDropdown()
 			map[value] = shouldSelect and true or nil
 			self.setting.set(lib.activeLayoutName, map, lib:GetActiveLayoutIndex())
 		end
-		Internal:RequestRefreshSettings()
+		if self.setting.refreshOnSelect ~= false then
+			Internal:RequestRefreshSettings()
+		end
 	end
 
 	function mixin:ToggleOption(value)
@@ -3453,8 +3455,6 @@ local function buildDivider()
 	end
 end
 
-local getDialogFrame
-
 local function buildCollapsible()
 	return function()
 		local button = CreateFrame("Button", nil, UIParent, "UIMenuButtonStretchTemplate")
@@ -3643,7 +3643,7 @@ local function setResetVisibility(buttonsFrame, visible)
 	end
 end
 
-getDialogFrame = function(dialog)
+local function getDialogFrame(dialog)
 	if not dialog then
 		return nil
 	end
@@ -5111,25 +5111,102 @@ function Internal:GetFrameButtons(frame)
 	end
 end
 
-function Internal:RequestRefreshSettings()
-	if self._refreshQueued then
-		return
-	end
-	self._refreshQueued = true
-	if not (C_Timer and C_Timer.After) then
-		self._refreshQueued = false
-		self:RefreshSettings()
-		return
-	end
-	Internal._refreshRunner = Internal._refreshRunner
-		or function()
-			Internal._refreshQueued = false
-			Internal:RefreshSettings()
+local function hasOpenDropdownMenu()
+	local menuManager = Menu and Menu.GetManager and Menu.GetManager()
+	if menuManager and menuManager.GetOpenMenu then
+		local ok, openMenu = pcall(menuManager.GetOpenMenu, menuManager)
+		if ok and openMenu then
+			return true
 		end
-	C_Timer.After(0, Internal._refreshRunner)
+	end
+	return UIDROPDOWNMENU_OPEN_MENU ~= nil
 end
 
-function Internal:RefreshSettings()
+local function mergeRefreshSettingValueTargets(existing, incoming)
+	if incoming == nil then
+		return nil, true
+	end
+	if type(incoming) ~= "table" then
+		return existing, existing ~= nil
+	end
+	if existing == nil then
+		existing = {}
+	end
+	for _, entry in ipairs(incoming) do
+		if type(entry) == "table" then
+			existing[entry] = true
+		end
+	end
+	for key, value in pairs(incoming) do
+		if type(key) == "table" and value then
+			existing[key] = true
+		elseif type(value) == "table" then
+			existing[value] = true
+		end
+	end
+	return existing, next(existing) ~= nil
+end
+
+function Internal:_scheduleSettingsRefresh(delay)
+	if self._refreshRunnerScheduled then
+		return
+	end
+	self._refreshRunnerScheduled = true
+	local wait = tonumber(delay) or 0
+	if wait < 0 then
+		wait = 0
+	end
+	if not (C_Timer and C_Timer.After) then
+		self._refreshRunnerScheduled = false
+		self:_runDeferredSettingsRefresh()
+		return
+	end
+	self._refreshRunner = self._refreshRunner
+		or function()
+			Internal._refreshRunnerScheduled = false
+			Internal:_runDeferredSettingsRefresh()
+		end
+	C_Timer.After(wait, self._refreshRunner)
+end
+
+function Internal:_runDeferredSettingsRefresh()
+	if hasOpenDropdownMenu() then
+		self:_scheduleSettingsRefresh(0.05)
+		return
+	end
+
+	local refreshLayout = self._refreshQueued == true
+	local refreshValues = self._refreshValuesQueued == true
+	local targets = self._refreshValueTargets
+
+	self._refreshQueued = nil
+	self._refreshValuesQueued = nil
+	self._refreshValueTargets = nil
+
+	if refreshLayout then
+		self:RefreshSettings(true)
+	end
+	if refreshValues then
+		self:RefreshSettingValues(targets, true)
+	end
+end
+
+function Internal:RequestRefreshSettings()
+	self._refreshQueued = true
+	self:_scheduleSettingsRefresh(0)
+end
+
+function Internal:RequestRefreshSettingValues(targetSettings)
+	self._refreshValuesQueued = true
+	self._refreshValueTargets = mergeRefreshSettingValueTargets(self._refreshValueTargets, targetSettings)
+	self:_scheduleSettingsRefresh(0)
+end
+
+function Internal:RefreshSettings(fromDeferred)
+	if not fromDeferred and hasOpenDropdownMenu() then
+		self:RequestRefreshSettings()
+		return
+	end
 	if not (Internal.dialog and Internal.dialog:IsShown()) then
 		return
 	end
@@ -5193,7 +5270,11 @@ function Internal:RefreshSettings()
 	end
 end
 
-function Internal:RefreshSettingValues(targetSettings)
+function Internal:RefreshSettingValues(targetSettings, fromDeferred)
+	if not fromDeferred and hasOpenDropdownMenu() then
+		self:RequestRefreshSettingValues(targetSettings)
+		return
+	end
 	if not (Internal.dialog and Internal.dialog:IsShown()) then
 		return
 	end

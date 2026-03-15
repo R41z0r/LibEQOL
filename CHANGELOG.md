@@ -1,5 +1,16 @@
 # Changelog
 
+## [20] - 2026-03-15
+
+Added:
+
+- EditMode: Multi Dropdown rows now support `refreshOnSelect = false` to skip the automatic settings refresh after each menu toggle when only the summary text should change.
+
+Fixed:
+
+- EditMode: Settings and setting-value refreshes are now deferred while dropdown menus are open, preventing re-entrant rebuilds during menu interaction.
+- EditMode: Deferred setting-value refreshes now retain queued target rows so dependent controls stay in sync once the menu closes.
+
 ## [19] - 2026-03-08
 
 Added:
