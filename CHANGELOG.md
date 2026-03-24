@@ -1,5 +1,12 @@
 # Changelog
 
+## [21] - 2026-03-24
+
+Fixed:
+
+- EditMode: Standalone/settings dialogs now keep bottom action buttons in stable full-width or compact two-column layouts when the dialog rebuilds.
+- EditMode: `settingsMaxHeight` now reserves space for the bottom action area so dialog buttons stay visible instead of being clipped by the scroll region.
+
 ## [20] - 2026-03-15
 
 Added:
