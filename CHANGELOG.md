@@ -1,5 +1,15 @@
 # Changelog
 
+## [22] - 2026-04-13
+
+Added:
+
+- Settings: Input controls now support numeric `min`/`max` bounds with optional `clampToRange` handling.
+
+Fixed:
+
+- Settings: Multi Dropdown rows now forward `desc`/`cbDesc`/`tooltip` data so row tooltips render consistently.
+
 ## [21] - 2026-03-24
 
 Fixed:

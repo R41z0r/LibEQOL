@@ -653,6 +653,9 @@ function lib:CreateInput(cat, data)
 	initializer.data.selectAllOnFocus = data.selectAllOnFocus
 	initializer.data.placeholder = data.placeholder
 	initializer.data.justifyH = data.justifyH
+	initializer.data.min = data.min
+	initializer.data.max = data.max
+	initializer.data.clampToRange = data.clampToRange
 
 	if initializer.data.multiline then
 		local extent = tonumber(initializer.data.multilineHeight) or 80
@@ -1163,6 +1166,7 @@ function lib:CreateMultiDropdown(cat, data)
 	)
 	local initializer = Settings.CreateElementInitializer("LibEQOL@project-abbreviated-hash@_MultiDropdownTemplate", {
 		label = data.name or data.text or data.key,
+		tooltip = data.desc or data.cbDesc or data.tooltip,
 		options = data.values,
 		optionfunc = data.optionfunc,
 		order = data.order,
