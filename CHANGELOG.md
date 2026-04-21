@@ -1,5 +1,12 @@
 # Changelog
 
+## [23] - 2026-04-21
+
+Fixed:
+
+- EditMode: Input rows now receive the current settings row width before setup, preventing pooled edit boxes from inheriting stale tiny widths.
+- EditMode/Settings: Input controls now clamp transiently small available widths to a practical minimum instead of collapsing to a 1px edit box.
+
 ## [22] - 2026-04-13
 
 Added:

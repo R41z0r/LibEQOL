@@ -1,4 +1,4 @@
-local MODULE_MAJOR, MINOR = "LibEQOLNativeEditMode-1.0", 10000
+local MODULE_MAJOR, MINOR = "LibEQOLNativeEditMode-1.0", 23000000
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 local C_Timer = _G.C_Timer
@@ -75,6 +75,7 @@ local DEFAULT_SETTINGS_SPACING = 2
 local DEFAULT_SLIDER_HEIGHT = 32
 local COLOR_BUTTON_WIDTH = 22
 local DEFAULT_INPUT_MAX_WIDTH = 193
+local DEFAULT_INPUT_MIN_WIDTH = 80
 local DROPDOWN_COLOR_MAX_WIDTH = 200
 local DEFAULT_MANAGER_TOGGLE_MAX_HEIGHT = 220
 local DEFAULT_MANAGER_TOGGLE_ROW_HEIGHT = 32
@@ -246,6 +247,16 @@ local function UpdateScrollChildWidth(dialog)
 		return
 	end
 	UpdateScrollChildWidthFor(scroll, child)
+end
+
+local function ApplySettingsRowWidth(row, settings)
+	if not (row and row.SetWidth and settings) then
+		return
+	end
+	local width = settings._eqolLastWidth or settings:GetWidth() or 0
+	if width > 0 then
+		row:SetWidth(width)
+	end
 end
 
 Internal.managerExtraFrames = Internal.managerExtraFrames or {}
@@ -3232,9 +3243,9 @@ local function buildInput()
 		local maxWidth = DEFAULT_INPUT_MAX_WIDTH
 		local totalWidth = self:GetWidth() or 0
 		if totalWidth > 0 then
-			local available = totalWidth - labelWidth - 6 - 2
-			if available < 1 then
-				available = 1
+			local available = totalWidth - labelWidth - 12 - 2
+			if available < DEFAULT_INPUT_MIN_WIDTH then
+				available = DEFAULT_INPUT_MIN_WIDTH
 			end
 			if available < maxWidth then
 				maxWidth = available
@@ -3871,6 +3882,7 @@ function Dialog:UpdateSettings()
 			if pool then
 				local setting = pool:Acquire(self.Settings)
 				setting.layoutIndex = index
+				ApplySettingsRowWidth(setting, self.Settings)
 				setting:Setup(data, self.selection)
 				local visible = evaluateVisibility(data, layoutName, layoutIndex)
 				if data.parentId and collapsedById[data.parentId] then
@@ -5611,6 +5623,7 @@ function Internal:RefreshSettingValues(targetSettings)
 			data = child.setting
 		end
 		if data and child.Setup and (not targets or targets[data]) then
+			ApplySettingsRowWidth(child, parent)
 			child:Setup(data, selection)
 			child.setting = data
 			if child.SetEnabled then

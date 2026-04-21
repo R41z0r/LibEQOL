@@ -1,4 +1,4 @@
-local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 11000000
+local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 23000000
 local _, lib = pcall(LibStub, MODULE_MAJOR)
 if not lib then
 	return
@@ -10,6 +10,7 @@ end
 LibEQOL_InputControlMixin = CreateFromMixins(SettingsControlMixin)
 
 local DEFAULT_INPUT_MAX_WIDTH = 170
+local DEFAULT_INPUT_MIN_WIDTH = 80
 
 local function formatInputValue(self, value)
 	if self.formatter then
@@ -161,8 +162,8 @@ function LibEQOL_InputControlMixin:ApplyLayout()
 		local rightPadding = 24
 		local leftX = totalWidth * 0.5 + leftOffset
 		local available = totalWidth - leftX - rightPadding
-		if available < 1 then
-			available = 1
+		if available < DEFAULT_INPUT_MIN_WIDTH then
+			available = DEFAULT_INPUT_MIN_WIDTH
 		end
 		if inputWidth and inputWidth > 0 then
 			local width = inputWidth
@@ -196,8 +197,8 @@ function LibEQOL_InputControlMixin:ApplyLayout()
 			local rightPadding = 24
 			local leftX = totalWidth * 0.5 + leftOffset
 			local available = totalWidth - leftX - rightPadding
-			if available < 1 then
-				available = 1
+			if available < DEFAULT_INPUT_MIN_WIDTH then
+				available = DEFAULT_INPUT_MIN_WIDTH
 			end
 			if available < maxWidth then
 				maxWidth = available
