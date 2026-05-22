@@ -142,6 +142,7 @@ function LibEQOL_SortableListMixin:OnLoad()
 
 	self.RowPool = CreateFramePool("FRAME", self.Rows)
 	self.rowFrames = {}
+	self.dragIndex = nil
 
 	local settingsLabel = self.Text
 	self.AddButton = CreateFrame("Button", nil, self, "UIPanelButtonTemplate")
@@ -165,6 +166,8 @@ function LibEQOL_SortableListMixin:Init(initializer)
 	self.showDelete = data.delete ~= false and data.deletable ~= false and data.onDelete ~= false
 	self.showAdd = data.add ~= false and (data.addOptions or data.addValues or data.addOptionFunc or data.menuGenerator or data.onAddButtonClick)
 	self.allowDuplicates = data.allowDuplicates == true
+	self.draggable = data.drag ~= false and data.draggable ~= false
+	self.dropHighlightColor = data.dropHighlightColor or data.highlightColor
 	self.buttonSize = data.buttonSize or DEFAULT_BUTTON_SIZE
 
 	self.AddButton:SetText(data.addText or data.addButtonText or "Add")
@@ -224,6 +227,23 @@ function LibEQOL_SortableListMixin:MoveItem(index, delta)
 	local item = self.items[index]
 	self.items[index], self.items[newIndex] = self.items[newIndex], item
 	self:Commit("move", item, index, newIndex)
+	self:RefreshRows()
+	repairSettingsLayout()
+end
+
+function LibEQOL_SortableListMixin:MoveItemToIndex(fromIndex, toIndex)
+	if fromIndex == toIndex then
+		return
+	end
+	if fromIndex < 1 or fromIndex > #self.items or toIndex < 1 or toIndex > #self.items then
+		return
+	end
+	local item = table.remove(self.items, fromIndex)
+	if not item then
+		return
+	end
+	table.insert(self.items, toIndex, item)
+	self:Commit("move", item, fromIndex, toIndex)
 	self:RefreshRows()
 	repairSettingsLayout()
 end
@@ -313,8 +333,37 @@ function LibEQOL_SortableListMixin:AddMenuOption(option, text)
 	end)
 end
 
+function LibEQOL_SortableListMixin:ShowDropHighlight(frame, show)
+	if not (frame and frame.DropHighlight) then
+		return
+	end
+	frame.DropHighlight:SetShown(show == true)
+end
+
+function LibEQOL_SortableListMixin:ClearDropHighlights()
+	for _, frame in ipairs(self.rowFrames or {}) do
+		self:ShowDropHighlight(frame, false)
+	end
+end
+
+function LibEQOL_SortableListMixin:GetDropIndex()
+	for index, frame in ipairs(self.rowFrames or {}) do
+		if frame:IsShown() and frame:IsMouseOver() then
+			return frame.index or index
+		end
+	end
+	return nil
+end
+
 function LibEQOL_SortableListMixin:SetupRow(frame, item, index)
 	if not frame.initialized then
+		frame:EnableMouse(true)
+		frame:RegisterForDrag("LeftButton")
+
+		frame.DropHighlight = frame:CreateTexture(nil, "BACKGROUND")
+		frame.DropHighlight:SetAllPoints(frame)
+		frame.DropHighlight:Hide()
+
 		frame.Label = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 		frame.Label:SetJustifyH("LEFT")
 		frame.Label:SetPoint("LEFT", 4, 0)
@@ -326,6 +375,33 @@ function LibEQOL_SortableListMixin:SetupRow(frame, item, index)
 		setButtonText(frame.DownButton, "v")
 		setButtonText(frame.DeleteButton, "x")
 
+		frame:SetScript("OnDragStart", function(row)
+			if not (self.draggable and self._enabledState ~= false) then
+				return
+			end
+			self.dragIndex = row.index
+			row:SetAlpha(0.65)
+			self:ClearDropHighlights()
+		end)
+		frame:SetScript("OnDragStop", function(row)
+			row:SetAlpha(1)
+			local fromIndex = self.dragIndex
+			local toIndex = self:GetDropIndex()
+			self.dragIndex = nil
+			self:ClearDropHighlights()
+			if fromIndex and toIndex and fromIndex ~= toIndex then
+				self:MoveItemToIndex(fromIndex, toIndex)
+			end
+		end)
+		frame:SetScript("OnEnter", function(row)
+			if self.dragIndex and self.dragIndex ~= row.index then
+				self:ShowDropHighlight(row, true)
+			end
+		end)
+		frame:SetScript("OnLeave", function(row)
+			self:ShowDropHighlight(row, false)
+		end)
+
 		frame.initialized = true
 	end
 
@@ -334,6 +410,14 @@ function LibEQOL_SortableListMixin:SetupRow(frame, item, index)
 	frame:SetPoint("RIGHT", self.Rows, "RIGHT", 0, 0)
 	frame.data = item
 	frame.index = index
+	frame:SetAlpha(1)
+	local color = self.dropHighlightColor
+	if color then
+		frame.DropHighlight:SetColorTexture(color[1] or 0.2, color[2] or 0.7, color[3] or 0.2, color[4] or 0.28)
+	else
+		frame.DropHighlight:SetColorTexture(0.2, 0.7, 0.2, 0.28)
+	end
+	self:ShowDropHighlight(frame, false)
 
 	setupButton(frame.UpButton, self.buttonSize, self.data.upTooltip or "Move up")
 	setupButton(frame.DownButton, self.buttonSize, self.data.downTooltip or "Move down")
@@ -372,6 +456,7 @@ function LibEQOL_SortableListMixin:SetupRow(frame, item, index)
 	local canMoveUp = index > 1
 	local canMoveDown = index < #self.items
 	frame.Label:SetFontObject(enabled and GameFontHighlightSmall or GameFontDisableSmall)
+	frame:EnableMouse(enabled and self.draggable)
 	frame.UpButton:SetShown(canMoveUp)
 	frame.DownButton:SetShown(canMoveDown)
 	frame.UpButton:SetEnabled(enabled and canMoveUp)
@@ -389,6 +474,7 @@ function LibEQOL_SortableListMixin:RefreshRows()
 	end
 
 	self.RowPool:ReleaseAll()
+	self.dragIndex = nil
 	wipeTable(self.rowFrames)
 	self.rowFrames = self.rowFrames or {}
 
