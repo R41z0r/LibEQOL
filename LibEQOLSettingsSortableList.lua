@@ -14,6 +14,8 @@ local DEFAULT_SPACING = 4
 local DEFAULT_PADDING = 4
 local DEFAULT_BUTTON_SIZE = 20
 local DEFAULT_ADD_BUTTON_WIDTH = 96
+local DEFAULT_DRAG_GHOST_WIDTH = 160
+local DEFAULT_DRAG_GHOST_HEIGHT = 22
 
 local function wipeTable(tbl)
 	if not tbl then
@@ -168,6 +170,13 @@ function LibEQOL_SortableListMixin:Init(initializer)
 	self.allowDuplicates = data.allowDuplicates == true
 	self.draggable = data.drag ~= false and data.draggable ~= false
 	self.dropHighlightColor = data.dropHighlightColor or data.highlightColor
+	self.showDragGhost = data.dragGhost ~= false and data.showDragGhost ~= false
+	self.dragGhostWidth = data.dragGhostWidth or DEFAULT_DRAG_GHOST_WIDTH
+	self.dragGhostHeight = data.dragGhostHeight or DEFAULT_DRAG_GHOST_HEIGHT
+	self.dragGhostOffsetX = data.dragGhostOffsetX or 16
+	self.dragGhostOffsetY = data.dragGhostOffsetY or -12
+	self.dragGhostColor = data.dragGhostColor
+	self.dragGhostTextColor = data.dragGhostTextColor
 	self.buttonSize = data.buttonSize or DEFAULT_BUTTON_SIZE
 
 	self.AddButton:SetText(data.addText or data.addButtonText or "Add")
@@ -355,6 +364,82 @@ function LibEQOL_SortableListMixin:GetDropIndex()
 	return nil
 end
 
+function LibEQOL_SortableListMixin:UpdateDragGhostPosition()
+	local ghost = self.dragGhost
+	if not (ghost and ghost:IsShown()) then
+		return
+	end
+	local scale = UIParent and UIParent.GetEffectiveScale and UIParent:GetEffectiveScale() or 1
+	local x, y = GetCursorPosition()
+	ghost:ClearAllPoints()
+	ghost:SetPoint(
+		"TOPLEFT",
+		UIParent,
+		"BOTTOMLEFT",
+		(x / scale) + (self.dragGhostOffsetX or 0),
+		(y / scale) + (self.dragGhostOffsetY or 0)
+	)
+end
+
+function LibEQOL_SortableListMixin:EnsureDragGhost()
+	if self.dragGhost or not UIParent then
+		return self.dragGhost
+	end
+
+	local ghost = CreateFrame("Frame", nil, UIParent)
+	ghost:SetFrameStrata("TOOLTIP")
+	ghost:SetSize(self.dragGhostWidth, self.dragGhostHeight)
+	ghost:EnableMouse(false)
+
+	ghost.Background = ghost:CreateTexture(nil, "BACKGROUND")
+	ghost.Background:SetAllPoints(ghost)
+
+	ghost.Text = ghost:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	ghost.Text:SetPoint("LEFT", ghost, "LEFT", 6, 0)
+	ghost.Text:SetPoint("RIGHT", ghost, "RIGHT", -6, 0)
+	ghost.Text:SetJustifyH("LEFT")
+
+	ghost:SetScript("OnUpdate", function()
+		self:UpdateDragGhostPosition()
+	end)
+	ghost:Hide()
+
+	self.dragGhost = ghost
+	return ghost
+end
+
+function LibEQOL_SortableListMixin:ShowDragGhost(text)
+	if not self.showDragGhost then
+		return
+	end
+	local ghost = self:EnsureDragGhost()
+	if not ghost then
+		return
+	end
+	ghost:SetSize(self.dragGhostWidth, self.dragGhostHeight)
+	local bg = self.dragGhostColor
+	if bg then
+		ghost.Background:SetColorTexture(bg[1] or 0, bg[2] or 0, bg[3] or 0, bg[4] or 0.85)
+	else
+		ghost.Background:SetColorTexture(0.04, 0.05, 0.06, 0.86)
+	end
+	local textColor = self.dragGhostTextColor
+	if textColor then
+		ghost.Text:SetTextColor(textColor[1] or 1, textColor[2] or 1, textColor[3] or 1, textColor[4] or 1)
+	else
+		ghost.Text:SetTextColor(1, 1, 1, 1)
+	end
+	ghost.Text:SetText(text or "")
+	self:UpdateDragGhostPosition()
+	ghost:Show()
+end
+
+function LibEQOL_SortableListMixin:HideDragGhost()
+	if self.dragGhost then
+		self.dragGhost:Hide()
+	end
+end
+
 function LibEQOL_SortableListMixin:SetupRow(frame, item, index)
 	if not frame.initialized then
 		frame:EnableMouse(true)
@@ -382,6 +467,7 @@ function LibEQOL_SortableListMixin:SetupRow(frame, item, index)
 			self.dragIndex = row.index
 			row:SetAlpha(0.65)
 			self:ClearDropHighlights()
+			self:ShowDragGhost(row.Label and row.Label:GetText() or itemLabel(row.data))
 		end)
 		frame:SetScript("OnDragStop", function(row)
 			row:SetAlpha(1)
@@ -389,6 +475,7 @@ function LibEQOL_SortableListMixin:SetupRow(frame, item, index)
 			local toIndex = self:GetDropIndex()
 			self.dragIndex = nil
 			self:ClearDropHighlights()
+			self:HideDragGhost()
 			if fromIndex and toIndex and fromIndex ~= toIndex then
 				self:MoveItemToIndex(fromIndex, toIndex)
 			end
@@ -475,6 +562,7 @@ function LibEQOL_SortableListMixin:RefreshRows()
 
 	self.RowPool:ReleaseAll()
 	self.dragIndex = nil
+	self:HideDragGhost()
 	wipeTable(self.rowFrames)
 	self.rowFrames = self.rowFrames or {}
 
@@ -504,6 +592,7 @@ function LibEQOL_SortableListMixin:Release()
 	if self.RowPool then
 		self.RowPool:ReleaseAll()
 	end
+	self:HideDragGhost()
 	SettingsListElementMixin.Release(self)
 end
 
