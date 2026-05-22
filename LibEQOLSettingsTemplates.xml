@@ -134,4 +134,15 @@
 			<OnLoad method="OnLoad"/>
 		</Scripts>
 	</Frame>
+
+	<Frame name="LibEQOL@project-abbreviated-hash@_SortableListTemplate"
+		inherits="SettingsListElementTemplate"
+		mixin="LibEQOL_SortableListMixin"
+		virtual="true"
+	>
+	<Size x="200" y="80"/>
+		<Scripts>
+			<OnLoad method="OnLoad"/>
+		</Scripts>
+	</Frame>
 </Ui>

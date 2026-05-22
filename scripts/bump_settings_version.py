@@ -23,6 +23,7 @@ TARGETS = [
     Path("LibEQOLSettingsMultiDropdown.lua"),
     Path("LibEQOLSettingsScrollDropdown.lua"),
     Path("LibEQOLSettingsSoundDropdown.lua"),
+    Path("LibEQOLSettingsSortableList.lua"),
     Path("LibEQOLSettingsColorOverrides.lua"),
 ]
 
