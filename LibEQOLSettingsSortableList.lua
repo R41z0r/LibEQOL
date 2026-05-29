@@ -1,6 +1,6 @@
 local MODULE_MAJOR, EXPECTED_MINOR = "LibEQOLSettingsMode-1.0", 24000000
-local ok, lib = pcall(LibStub, MODULE_MAJOR)
-if not ok or not lib then
+local loaded, lib = pcall(LibStub, MODULE_MAJOR)
+if not loaded or not lib then
 	return
 end
 if lib.MINOR and lib.MINOR > EXPECTED_MINOR then
@@ -8,6 +8,13 @@ if lib.MINOR and lib.MINOR > EXPECTED_MINOR then
 end
 
 LibEQOL_SortableListMixin = CreateFromMixins(SettingsListElementMixin)
+
+local SettingsInbound = _G.SettingsInbound
+local SettingsPanel = _G.SettingsPanel
+local MenuUtil = _G.MenuUtil
+local GetCursorPosition = _G.GetCursorPosition
+local GameTooltip_SetTitle = _G.GameTooltip_SetTitle
+local GameTooltip_Hide = _G.GameTooltip_Hide
 
 local DEFAULT_ROW_HEIGHT = 22
 local DEFAULT_SPACING = 4
@@ -82,8 +89,8 @@ local function call(func, ...)
 	if type(func) ~= "function" then
 		return nil
 	end
-	local ok, result = pcall(func, ...)
-	if ok then
+	local success, result = pcall(func, ...)
+	if success then
 		return result
 	end
 	return nil

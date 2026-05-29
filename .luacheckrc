@@ -85,6 +85,7 @@ globals = {
 	"LibEQOL_ScrollDropdownMixin",
 	"LibEQOL_SoundDropdownMixin",
 	"LibEQOL_InputControlMixin",
+	"LibEQOL_SortableListMixin",
 	"GRAY_FONT_COLOR",
 	"CreateColor",
 	"SlashCmdList",
