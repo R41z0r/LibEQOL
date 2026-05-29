@@ -1,4 +1,4 @@
-local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 23000000
+local MODULE_MAJOR, BASE_MAJOR, MINOR = "LibEQOLEditMode-1.0", "LibEQOL-1.0", 24000000
 local LibStub = _G.LibStub
 assert(LibStub, MODULE_MAJOR .. " requires LibStub")
 local C_Timer = _G.C_Timer
@@ -5087,6 +5087,18 @@ end
 function lib:HideStandaloneSettingsDialog(frame)
 	local dialog = Internal.dialog
 	if not (dialog and dialog:IsShown() and dialog.mode == "standalone") then
+		return false
+	end
+	if frame and getDialogFrame(dialog) ~= frame then
+		return false
+	end
+	dialog:Hide()
+	return true
+end
+
+function lib:HideSettingsDialog(frame)
+	local dialog = Internal.dialog
+	if not (dialog and dialog:IsShown()) then
 		return false
 	end
 	if frame and getDialogFrame(dialog) ~= frame then

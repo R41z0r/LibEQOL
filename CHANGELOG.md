@@ -1,5 +1,12 @@
 # Changelog
 
+## [24] - 2026-05-29
+
+Added:
+
+- Settings: New `CreateSortableList` control for ordered Settings lists, with up/down controls, drag-and-drop reordering, drop-target highlighting, optional floating drag text preview, delete support, Add menus, and SavedVariables-friendly `getItems`/`setItems` callbacks.
+- EditMode: New `HideSettingsDialog(frame?)` helper to close the active shared settings dialog in any mode, useful before unregistering or tearing down a frame.
+
 ## [23] - 2026-04-21
 
 Fixed:
